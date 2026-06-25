@@ -11,6 +11,11 @@ const PORT = 3000;
 
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log(`[DEBUG] Received request: ${req.method} ${req.url}`);
+  next();
+});
+
 // Ensure the local data directory exists.
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -72,24 +77,30 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'studyweb2026admin';
 
 // Admin: Login endpoint (custom simple password check)
 app.post('/api/admin/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, error: 'Email and password are required' });
-  }
-  const checkEmail = email.trim().toLowerCase();
-  const checkPassword = password.trim();
-  const expectedEmail = ADMIN_EMAIL.toLowerCase();
-  const expectedPassword = ADMIN_PASSWORD.trim();
+  try {
+    console.log('[DEBUG] Login request body:', req.body);
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    }
+    const checkEmail = email.trim().toLowerCase();
+    const checkPassword = password.trim();
+    const expectedEmail = ADMIN_EMAIL.toLowerCase();
+    const expectedPassword = ADMIN_PASSWORD.trim();
 
-  if (checkEmail === expectedEmail && checkPassword === expectedPassword) {
-    // Return a dummy session token and admin details
-    res.json({
-      success: true,
-      token: 'studyweb_admin_session_token_129841029',
-      user: { email: ADMIN_EMAIL, role: 'ADMIN' }
-    });
-  } else {
-    res.status(401).json({ success: false, error: 'Invalid admin email or password' });
+    if (checkEmail === expectedEmail && checkPassword === expectedPassword) {
+      // Return a dummy session token and admin details
+      return res.json({
+        success: true,
+        token: 'studyweb_admin_session_token_129841029',
+        user: { email: ADMIN_EMAIL, role: 'ADMIN' }
+      });
+    } else {
+      return res.status(401).json({ success: false, error: 'Invalid admin email or password' });
+    }
+  } catch (err) {
+    console.error('Unhandled error in /api/admin/login:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 });
 
