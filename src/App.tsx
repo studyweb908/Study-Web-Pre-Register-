@@ -281,14 +281,22 @@ export default function App() {
         body: JSON.stringify(formData)
       });
 
-      const resData = await response.json();
-
       clearInterval(progressInterval);
       setFormProgress(100);
 
       if (!response.ok) {
-        throw new Error(resData.error || 'Something went wrong. Please try again.');
+        let errorMessage = 'Something went wrong. Please try again.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If response was not JSON, use status
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const resData = await response.json();
 
       setLatestRegisteredUser(resData.user);
       setShowSuccessModal(true);
