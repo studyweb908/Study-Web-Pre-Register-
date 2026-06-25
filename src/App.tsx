@@ -1236,13 +1236,8 @@ export default function App() {
                 
                 {/* Column 1: Brand & Identity (Span 5) */}
                 <div className="md:col-span-5 space-y-4 text-left">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-100">
-                      <GraduationCap className="w-5 h-5" />
-                    </div>
-                    <span className="text-xl font-extrabold tracking-tight text-slate-900 font-heading">
-                      Study<span className="text-indigo-600">Web</span>
-                    </span>
+                  <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('home')}>
+                    <img src="/logo.png" alt="StudyWeb Logo" className="h-28 w-auto object-contain mix-blend-multiply" />
                   </div>
                   
                   <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
