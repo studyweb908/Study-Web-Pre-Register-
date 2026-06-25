@@ -117,7 +117,10 @@ export default function App() {
   useEffect(() => {
     // Load dynamic waitlist count on home launch
     fetch('/api/admin/waitlists')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      })
       .then(data => {
         if (data.waitlists && data.waitlists.length > 0) {
           setRecentRegistrationsCount(842 + data.waitlists.length);
@@ -173,6 +176,7 @@ export default function App() {
     setDashboardLoading(true);
     try {
       const resWait = await fetch('/api/admin/waitlists');
+      if (!resWait.ok) throw new Error('Failed to fetch waitlists');
       const waitData = await resWait.json();
       setWaitlistUsers(waitData.waitlists || []);
       
