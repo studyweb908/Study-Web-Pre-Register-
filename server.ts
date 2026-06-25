@@ -76,10 +76,10 @@ const ADMIN_EMAIL = 'studyweb908@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'studyweb2026admin';
 
 // Admin: Login endpoint (custom simple password check)
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
+  console.log('[DEBUG] Login request body:', req.body);
   try {
-    console.log('[DEBUG] Login request body:', req.body);
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Email and password are required' });
     }
