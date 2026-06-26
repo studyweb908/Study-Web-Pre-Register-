@@ -309,9 +309,12 @@ app.post('/api/waitlist', async (req, res) => {
     };
 
     // 1. Save to Supabase
+    console.log("Attempting to save to Supabase:", newUser);
     await addWaitlist(newUser);
+    console.log("Saved to Supabase successfully.");
 
     const cfg = await readConfig();
+    console.log("Read configuration:", { hasSpreadsheetId: !!cfg.spreadsheetId, hasAccessToken: !!cfg.accessToken });
     let sheetSaved = false;
     let emailSent = false;
     let syncError = '';
@@ -319,6 +322,7 @@ app.post('/api/waitlist', async (req, res) => {
     // 2. Synchronize to Google Sheets
     if (cfg.spreadsheetId && cfg.accessToken) {
       try {
+        console.log("Attempting to append to Google Sheets...");
         const range = 'Waitlist!A:G';
         const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
           method: 'POST',
@@ -332,9 +336,11 @@ app.post('/api/waitlist', async (req, res) => {
         });
 
         if (appendResponse.ok) {
+          console.log("Appended to Google Sheets successfully.");
           sheetSaved = true;
         } else {
           const errText = await appendResponse.text();
+          console.error("Failed to append to Google Sheets:", errText);
           if (appendResponse.status === 401 || errText.includes('authError') || errText.includes('UNAUTHENTICATED')) {
             syncError = 'Admin Google credentials expired.';
             cfg.accessToken = null;
@@ -344,6 +350,7 @@ app.post('/api/waitlist', async (req, res) => {
           }
         }
       } catch (sheetErr: any) {
+        console.error("Error appending to Google Sheets:", sheetErr);
         syncError = sheetErr.message;
       }
     }
@@ -351,6 +358,7 @@ app.post('/api/waitlist', async (req, res) => {
     // 3. Send automated Welcome Email
     if (cfg.accessToken) {
       try {
+        console.log("Attempting to send welcome email...");
         const subject = 'Welcome to StudyWeb 🚀';
         const bodyText = `Hi ${first_name},<br><br>
 You're officially on the StudyWeb waitlist, and you've secured <strong style="color: #4f46e5;">50% off</strong> your first month!<br><br>
@@ -379,7 +387,11 @@ We'll notify you as soon as early access becomes available.<br><br>
         });
 
         if (mailResponse.ok) {
+          console.log("Welcome email sent successfully.");
           emailSent = true;
+        } else {
+          const errText = await mailResponse.text();
+          console.error("Failed to send welcome email:", errText);
         }
       } catch (mailErr) {
         console.error('Gmail API transmission error:', mailErr);
@@ -393,9 +405,9 @@ We'll notify you as soon as early access becomes available.<br><br>
       emailSent,
       syncError: syncError || undefined
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Unhandled error in /api/waitlist:', err);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error: ' + err.message });
   }
 });
 
@@ -427,5 +439,3 @@ async function startServer() {
 }
 
 startServer();
-
-export default app;

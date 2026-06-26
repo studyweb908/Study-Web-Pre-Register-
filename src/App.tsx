@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import Confetti from 'react-confetti';
-import { initAuth, googleSignIn, logout as googleLogout, getAccessToken } from './firebase';
+import { initAuth, googleSignIn, logout as googleLogout, getAccessToken, handleRedirectResult } from './firebase';
 import { WaitlistUser, AdminConfig } from './types';
 import { COUNTRIES } from './countries';
 
@@ -374,29 +374,45 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
   // --------------------------------------------------------
   // GOOGLE LINK AND PROVISION SPREADSHEET
   // --------------------------------------------------------
-  const handleConnectGoogle = async () => {
-    setGoogleAuthLoading(true);
+  const processGoogleAuthResult = async (result: { user: any; accessToken: string }) => {
     try {
-      const result = await googleSignIn();
-      if (result) {
-        // Send access token back to configuration
-        const r = await fetch(API_BASE_URL + '/api/admin/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            accessToken: result.accessToken, 
-            googleEmail: result.user.email 
-          })
-        });
-        if (r.ok) {
-          const configRes = await r.json();
-          setAdminConfig(configRes.config);
-          await fetchAdminData();
-        }
+      // Send access token back to configuration
+      const r = await fetch(API_BASE_URL + '/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accessToken: result.accessToken, 
+          googleEmail: result.user.email 
+        })
+      });
+      if (r.ok) {
+        const configRes = await r.json();
+        setAdminConfig(configRes.config);
+        await fetchAdminData();
       }
     } catch (error) {
       console.error(error);
-    } finally {
+    }
+  };
+
+  useEffect(() => {
+    const checkRedirect = async () => {
+      const result = await handleRedirectResult();
+      if (result) {
+        setGoogleAuthLoading(true);
+        await processGoogleAuthResult(result);
+        setGoogleAuthLoading(false);
+      }
+    };
+    checkRedirect();
+  }, []);
+
+  const handleConnectGoogle = async () => {
+    setGoogleAuthLoading(true);
+    try {
+      await googleSignIn();
+    } catch (error) {
+      console.error(error);
       setGoogleAuthLoading(false);
     }
   };
