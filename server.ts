@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
-import { createServer as createViteServer } from 'vite';
 
 // Load environment variables.
 import 'dotenv/config';
@@ -440,7 +439,8 @@ We'll notify you as soon as early access becomes available.<br><br>
 // VITE OR STATIC FILE REVERSE PROXY MIDDLEWARE
 // --------------------------------------------------------
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !isVercel) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
