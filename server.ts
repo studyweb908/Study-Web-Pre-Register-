@@ -89,8 +89,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // Admin Authentication Configuration
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'studyweb908@gmail.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'studyweb2026admin';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'studyweb2026admin').trim();
 
 // Admin: Login endpoint
 app.post('/api/admin/login', async (req, res) => {

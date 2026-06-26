@@ -364,7 +364,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
       if (!response.ok) {
         const text = await response.text();
         console.error('Admin Login Error:', text);
-        let errorMsg = 'Access Denied.';
+        let errorMsg = 'Wrong email or password, please try again.';
         try {
           const resData = JSON.parse(text);
           errorMsg = resData.error || errorMsg;
