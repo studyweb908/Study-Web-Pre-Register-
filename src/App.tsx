@@ -1671,10 +1671,16 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                         </h4>
                         
                         <div className="space-y-2 pt-2">
-                          {Object.keys(stats.gradeStats).length === 0 ? (
+                          {waitlistUsers.length === 0 ? (
                             <p className="text-xs text-slate-400 py-6 text-center">No class statistics yet.</p>
                           ) : (
-                            Object.entries(stats.gradeStats).map(([grade, count]: [string, any]) => {
+                            Object.entries(
+                              waitlistUsers.reduce((acc, user) => {
+                                const grade = user.grade || 'Unknown';
+                                acc[grade] = (acc[grade] || 0) + 1;
+                                return acc;
+                              }, {} as Record<string, number>)
+                            ).map(([grade, count]: [string, any]) => {
                               const pct = Math.round((count / waitlistUsers.length) * 105);
                               return (
                                 <div key={grade} className="space-y-1">

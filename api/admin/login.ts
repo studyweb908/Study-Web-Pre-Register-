@@ -1,5 +1,13 @@
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+interface VercelRequest {
+  method?: string;
+  body?: any;
+}
+
+interface VercelResponse {
+  status: (statusCode: number) => VercelResponse;
+  json: (body: any) => VercelResponse;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -8,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { email, password } = req.body || {};
   const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').trim();
-  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'studyweb2026admin').trim();
+  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Peer_Rayan').trim();
 
   if (!email || !password) {
     return res.status(400).json({ success: false, error: 'Email and password are required' });

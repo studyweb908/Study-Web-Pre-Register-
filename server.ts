@@ -31,19 +31,6 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-import { GoogleAuth } from 'google-auth-library';
-import { google } from 'googleapis';
-
-const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-const auth = serviceAccountKey 
-  ? new GoogleAuth({
-      credentials: JSON.parse(serviceAccountKey),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.send']
-    }) 
-  : null;
-const sheets = auth ? google.sheets({ version: 'v4', auth }) : null;
-const gmail = auth ? google.gmail({ version: 'v1', auth }) : null;
-
 if (!supabase) {
   console.warn("WARNING: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set. Database operations will fail.");
 }
@@ -98,28 +85,73 @@ async function writeConfig(cfg: any) {
 
 // Public: Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: supabase ? 'connected' : 'disconnected', googleSheets: !!sheets });
+  res.json({ status: 'ok', database: supabase ? 'connected' : 'disconnected' });
 });
 
 // Admin Authentication Configuration
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'studyweb2026admin').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Peer_Rayan').trim();
 
-// Admin: Login endpoint moved to api/admin/login.ts
+// Admin: Login endpoint
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    }
+    const checkEmail = email.trim().toLowerCase();
+    const checkPassword = password.trim();
+    
+    if (checkEmail === ADMIN_EMAIL.toLowerCase() && checkPassword === ADMIN_PASSWORD) {
+      return res.json({
+        success: true,
+        token: 'studyweb_admin_session_token_129841029',
+        user: { email: ADMIN_EMAIL, role: 'ADMIN' }
+      });
+    } else {
+      return res.status(401).json({ success: false, error: 'Incorrect email or password' });
+    }
+  } catch (err) {
+    console.error('Unhandled error in /api/admin/login:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error.' });
+  }
+});
 
 // Admin: Get Stats
 app.get('/api/admin/stats', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not connected' });
   
-  const { count: totalRegistrations, error: regError } = await supabase.from('users').select('*', { count: 'exact', head: true });
-  const { count: totalWaitlists, error: waitlistError } = await supabase.from('waitlists').select('*', { count: 'exact', head: true });
-  
-  if (regError || waitlistError) {
-    console.error('Error fetching stats:', regError || waitlistError);
-    return res.status(500).json({ error: 'Failed to fetch stats' });
+  let totalRegistrations = 0;
+  let totalWaitlists = 0;
+  let totalLoggedIn = 0;
+
+  try {
+    const { count: waitlistCount, error: waitlistError } = await supabase
+      .from('waitlists')
+      .select('*', { count: 'exact', head: true });
+    
+    if (waitlistError) {
+      console.error('Error reading waitlists from Supabase:', waitlistError);
+    } else {
+      totalWaitlists = waitlistCount || 0;
+    }
+
+    // Try reading from users, fall back to waitlists count if users table doesn't exist
+    const { count: userCount, error: regError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+    
+    if (regError) {
+      console.warn('Could not read from users table, falling back to waitlists count:', regError.message);
+      totalRegistrations = totalWaitlists; // Fallback since waitlist signups are the registered users
+    } else {
+      totalRegistrations = userCount || 0;
+    }
+  } catch (err) {
+    console.error('Error in stats retrieval:', err);
   }
   
-  res.json({ totalRegistrations: totalRegistrations || 0, totalWaitlists: totalWaitlists || 0, totalLoggedIn: 0 }); // totalLoggedIn not tracked in simple DB
+  res.json({ totalRegistrations, totalWaitlists, totalLoggedIn });
 });
 
 // Register User
