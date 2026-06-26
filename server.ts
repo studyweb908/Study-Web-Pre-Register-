@@ -12,15 +12,17 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+
+// Vercel serverless functions might strip the /api prefix, so we add it back
+// ONLY if we are running in Vercel and it's missing.
 app.use((req, res, next) => {
-  if (!req.url.startsWith('/api')) {
+  if (isVercel && !req.url.startsWith('/api')) {
     req.url = '/api' + (req.url === '/' ? '' : req.url);
   }
   console.log(`[DEBUG] Received request: ${req.method} ${req.url}`);
   next();
 });
-
-const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 
 // --------------------------------------------------------
 // SUPABASE SETUP

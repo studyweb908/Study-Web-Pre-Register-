@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   GraduationCap, 
@@ -42,7 +43,7 @@ import { COUNTRIES } from './countries';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-export default function App() {
+export default function App({ defaultView = 'home' }: { defaultView?: 'home' | 'admin' }) {
   // Parallax Scroll Effects
   const { scrollY } = useScroll();
   const heroLeftY = useTransform(scrollY, [0, 800], [0, -80]);
@@ -50,7 +51,7 @@ export default function App() {
   const backgroundY = useTransform(scrollY, [0, 800], [0, 150]);
 
   // Routes & General state
-  const [view, setView] = useState<'home' | 'admin'>('home');
+  const [view, setView] = useState<'home' | 'admin'>(defaultView);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [recentRegistrationsCount, setRecentRegistrationsCount] = useState(842);
 
@@ -481,11 +482,11 @@ export default function App() {
   const filteredUsers = waitlistUsers.filter(user => {
     const q = searchQuery.toLowerCase();
     return (
-      user.first_name.toLowerCase().includes(q) ||
-      user.last_name.toLowerCase().includes(q) ||
-      user.email.toLowerCase().includes(q) ||
-      user.country.toLowerCase().includes(q) ||
-      user.grade.toLowerCase().includes(q)
+      user.first_name?.toLowerCase().includes(q) ||
+      user.last_name?.toLowerCase().includes(q) ||
+      user.email?.toLowerCase().includes(q) ||
+      user.country?.toLowerCase().includes(q) ||
+      user.grade?.toLowerCase().includes(q)
     );
   });
 
