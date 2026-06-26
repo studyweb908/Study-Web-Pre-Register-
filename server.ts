@@ -182,6 +182,33 @@ app.get('/api/admin/stats', async (req, res) => {
   res.json({ totalRegistrations, totalWaitlists, totalLoggedIn });
 });
 
+// Admin: Get All Registered Users
+app.get('/api/admin/users', async (req, res) => {
+  if (!supabase) {
+    console.error('[ERROR] Users endpoint called but Supabase is not connected.');
+    return res.status(500).json({ error: 'Database not connected. Check environment variables.' });
+  }
+
+  try {
+    console.log('[DEBUG] Fetching all users from Supabase...');
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, name, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[ERROR] Supabase: Failed to fetch users:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log(`[INFO] Successfully fetched ${data?.length || 0} users.`);
+    res.json({ users: data || [] });
+  } catch (err) {
+    console.error('[CRITICAL] Unhandled error in users retrieval:', err);
+    res.status(500).json({ error: 'Internal server error fetching users' });
+  }
+});
+
 // Register User
 app.post('/api/register', async (req, res) => {
   if (!supabase) {

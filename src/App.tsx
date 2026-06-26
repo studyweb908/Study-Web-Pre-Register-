@@ -82,6 +82,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
 
   // Admin Dashboard Data State
   const [waitlistUsers, setWaitlistUsers] = useState<WaitlistUser[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalRegistrations: 0, totalWaitlists: 0, totalLoggedIn: 0 });
   const [adminConfig, setAdminConfig] = useState<AdminConfig>({
     spreadsheetId: '',
@@ -112,7 +113,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     }
   };
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'records' | 'g_sync'>('records');
+  const [activeTab, setActiveTab] = useState<'records' | 'users' | 'g_sync'>('records');
 
   // Load Window Size for Confetti
   useEffect(() => {
@@ -169,10 +170,27 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     const interval = setInterval(() => {
       fetchAdminData();
       fetchStats();
+      fetchRegisteredUsers();
     }, 30000);
 
     return () => clearInterval(interval);
   }, [adminIsLoggedIn]);
+
+  const fetchRegisteredUsers = async () => {
+    try {
+      console.log('[DEBUG] Fetching registered users list...');
+      const res = await fetch(API_BASE_URL + '/api/admin/users');
+      const data = await res.json();
+      if (res.ok) {
+        setRegisteredUsers(data.users || []);
+        console.log(`[INFO] Admin: Loaded ${data.users?.length || 0} registered users.`);
+      } else {
+        console.error('Users Fetch Error:', data.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      console.error('Users Network Error:', e);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -218,6 +236,8 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
       setWaitlistUsers(waitData.waitlists || []);
       setAdminAuthError(''); // Clear errors on success
       
+      await fetchRegisteredUsers();
+      await fetchStats();
       await handleFetchConfig();
     } catch (e: any) {
       console.error('Network or Parse Error:', e);
@@ -1572,17 +1592,59 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                     onClick={() => setActiveTab('records')}
                     className={`py-3 px-1.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'records' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                   >
-                    Waitlist Records ({filteredUsers.length})
+                    Waitlist Records ({waitlistUsers.length})
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('users')}
+                    className={`py-3 px-1.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'users' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Registered Users ({registeredUsers.length})
                   </button>
                   <button 
                     onClick={() => setActiveTab('g_sync')}
                     className={`py-3 px-1.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'g_sync' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                   >
-                    Google Workspace Integration
+                    Google Workspace
                   </button>
                 </div>
 
-                {/* TAB 1: WAITLIST RECORDS TABLE & GRAPHS */}
+                {/* TAB 2: REGISTERED USERS LIST */}
+                {activeTab === 'users' && (
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-400 font-bold text-[10px] tracking-widest uppercase border-b border-slate-100">
+                              <th className="py-4 px-6">Name</th>
+                              <th className="py-4 px-6">Email</th>
+                              <th className="py-4 px-6 text-right">Registration Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 text-xs">
+                            {registeredUsers.length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="py-12 text-center text-slate-400 font-medium">
+                                  No registered users found.
+                                </td>
+                              </tr>
+                            ) : (
+                              registeredUsers.map((user) => (
+                                <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="py-4 px-6 font-bold text-slate-900">{user.name || 'No Name'}</td>
+                                  <td className="py-4 px-6 text-slate-600">{user.email}</td>
+                                  <td className="py-4 px-6 text-right text-slate-400 font-mono">
+                                    {new Date(user.created_at).toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {activeTab === 'records' && (
                   <div className="space-y-6">
                     
