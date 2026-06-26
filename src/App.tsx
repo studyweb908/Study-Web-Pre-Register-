@@ -177,12 +177,14 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
   const fetchStats = async () => {
     try {
       const res = await fetch(API_BASE_URL + '/api/admin/stats');
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setStats(data);
+      } else {
+        console.error('Stats Fetch Error:', data.error || 'Unknown error');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Stats Network Error:', e);
     }
   };
 
@@ -205,17 +207,21 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     setDashboardLoading(true);
     try {
       const resWait = await fetch(API_BASE_URL + '/api/admin/waitlists');
-      if (!resWait.ok) {
-        const text = await resWait.text();
-        console.error('Waitlist Fetch Error:', text);
-        throw new Error('Failed to fetch waitlists');
-      }
       const waitData = await resWait.json();
+      
+      if (!resWait.ok) {
+        console.error('Waitlist Fetch Error:', waitData.error || 'Unknown error');
+        setAdminAuthError(waitData.error || 'Failed to fetch waitlist data');
+        return;
+      }
+      
       setWaitlistUsers(waitData.waitlists || []);
+      setAdminAuthError(''); // Clear errors on success
       
       await handleFetchConfig();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Network or Parse Error:', e);
+      setAdminAuthError('Could not connect to the server: ' + e.message);
     } finally {
       setDashboardLoading(false);
     }

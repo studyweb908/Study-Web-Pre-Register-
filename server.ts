@@ -27,28 +27,51 @@ app.use((req, res, next) => {
 // --------------------------------------------------------
 // SUPABASE & GOOGLE SETUP
 // --------------------------------------------------------
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
+const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 
-if (!supabase) {
-  console.warn("WARNING: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set. Database operations will fail.");
+if (!supabaseUrl || !supabaseKey) {
+  console.error('[CRITICAL] Supabase environment variables are missing! SUPABASE_URL or SUPABASE_ANON_KEY/SERVICE_ROLE_KEY is required.');
 }
 
-async function readWaitlists(): Promise<any[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.from('waitlists').select('*').order('created_at', { ascending: false });
-  if (error) {
-    console.error('Error reading waitlists:', error);
-    return [];
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+if (supabase) {
+  console.log('[INFO] Supabase client initialized successfully.');
+}
+
+async function readWaitlists() {
+  if (!supabase) {
+    console.error('[ERROR] Supabase client not initialized in readWaitlists');
+    return { data: [], error: 'Database not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY.' };
   }
-  return data || [];
+  
+  const { data, error } = await supabase
+    .from('waitlists')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error('[ERROR] Supabase: Failed to read waitlists:', error.message, error.details);
+    return { data: [], error: error.message };
+  }
+  return { data: data || [], error: null };
 }
 
 async function addWaitlist(user: any) {
-  if (!supabase) return;
+  if (!supabase) {
+    console.error('[ERROR] Supabase client not initialized in addWaitlist');
+    return;
+  }
+  
+  console.log('[DEBUG] Saving user to Supabase waitlist:', user.email);
   const { error } = await supabase.from('waitlists').insert(user);
-  if (error) console.error('Error adding to waitlist:', error);
+  
+  if (error) {
+    console.error('[ERROR] Supabase: Failed to add to waitlist:', error.message, error.details);
+  } else {
+    console.log('[INFO] Successfully added user to Supabase waitlist.');
+  }
 }
 
 async function deleteWaitlist(id: string) {
@@ -119,36 +142,41 @@ app.post('/api/admin/login', async (req, res) => {
 
 // Admin: Get Stats
 app.get('/api/admin/stats', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not connected' });
+  if (!supabase) {
+    console.error('[ERROR] Stats endpoint called but Supabase is not connected.');
+    return res.status(500).json({ error: 'Database not connected. Check environment variables.' });
+  }
   
   let totalRegistrations = 0;
   let totalWaitlists = 0;
   let totalLoggedIn = 0;
 
   try {
+    console.log('[DEBUG] Fetching waitlist count from Supabase...');
     const { count: waitlistCount, error: waitlistError } = await supabase
       .from('waitlists')
       .select('*', { count: 'exact', head: true });
     
     if (waitlistError) {
-      console.error('Error reading waitlists from Supabase:', waitlistError);
+      console.error('[ERROR] Stats: Failed to read waitlists count:', waitlistError.message);
     } else {
       totalWaitlists = waitlistCount || 0;
     }
 
     // Try reading from users, fall back to waitlists count if users table doesn't exist
+    console.log('[DEBUG] Fetching user count from Supabase...');
     const { count: userCount, error: regError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true });
     
     if (regError) {
-      console.warn('Could not read from users table, falling back to waitlists count:', regError.message);
-      totalRegistrations = totalWaitlists; // Fallback since waitlist signups are the registered users
+      console.warn('[WARN] Stats: users table error (falling back to waitlist count):', regError.message);
+      totalRegistrations = totalWaitlists; 
     } else {
       totalRegistrations = userCount || 0;
     }
   } catch (err) {
-    console.error('Error in stats retrieval:', err);
+    console.error('[CRITICAL] Unhandled error in stats retrieval:', err);
   }
   
   res.json({ totalRegistrations, totalWaitlists, totalLoggedIn });
@@ -156,10 +184,18 @@ app.get('/api/admin/stats', async (req, res) => {
 
 // Register User
 app.post('/api/register', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not connected' });
+  if (!supabase) {
+    console.error('[ERROR] Register called but Supabase not connected.');
+    return res.status(500).json({ error: 'Database not connected' });
+  }
   const { email, password, name } = req.body;
+  console.log(`[DEBUG] Attempting to register user: ${email}`);
   const { error } = await supabase.from('users').insert({ email, password, name });
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    console.error('[ERROR] Supabase register error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+  console.log(`[INFO] User registered successfully: ${email}`);
   res.json({ success: true });
 });
 
@@ -253,7 +289,10 @@ async function syncToGoogleSheet() {
     return { success: false, error: 'Google Sheet not connected.' };
   }
 
-  const waitlists = await readWaitlists();
+  const { data: waitlists, error: readError } = await readWaitlists();
+  if (readError) {
+    return { success: false, error: readError };
+  }
   
   try {
     const range = 'Waitlist!A2:G';
@@ -305,8 +344,11 @@ async function syncToGoogleSheet() {
 
 // Get recent waitlist submissions
 app.get('/api/admin/waitlists', async (req, res) => {
-  const waitlists = await readWaitlists();
-  res.json({ waitlists });
+  const { data, error } = await readWaitlists();
+  if (error) {
+    return res.status(500).json({ waitlists: [], error });
+  }
+  res.json({ waitlists: data });
 });
 
 // Force sync all data
@@ -486,6 +528,6 @@ async function startServer() {
 
 export { app };
 
-if (process.env.VERCEL !== '1') {
+if (!isVercel) {
   startServer();
 }
