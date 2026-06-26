@@ -25,11 +25,24 @@ app.use((req, res, next) => {
 });
 
 // --------------------------------------------------------
-// SUPABASE SETUP
+// SUPABASE & GOOGLE SETUP
 // --------------------------------------------------------
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+import { GoogleAuth } from 'google-auth-library';
+import { google } from 'googleapis';
+
+const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+const auth = serviceAccountKey 
+  ? new GoogleAuth({
+      credentials: JSON.parse(serviceAccountKey),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.send']
+    }) 
+  : null;
+const sheets = auth ? google.sheets({ version: 'v4', auth }) : null;
+const gmail = auth ? google.gmail({ version: 'v1', auth }) : null;
 
 if (!supabase) {
   console.warn("WARNING: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set. Database operations will fail.");
@@ -85,18 +98,38 @@ async function writeConfig(cfg: any) {
 
 // Public: Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: supabase ? 'connected' : 'disconnected' });
+  res.json({ status: 'ok', database: supabase ? 'connected' : 'disconnected', googleSheets: !!sheets });
 });
 
 // Admin Authentication Configuration
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'studyweb2026admin').trim();
 
-console.log('DEBUG: ADMIN_EMAIL:', ADMIN_EMAIL);
-console.log('DEBUG: ADMIN_PASSWORD (length):', ADMIN_PASSWORD.length);
-
-
 // Admin: Login endpoint moved to api/admin/login.ts
+
+// Admin: Get Stats
+app.get('/api/admin/stats', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not connected' });
+  
+  const { count: totalRegistrations, error: regError } = await supabase.from('users').select('*', { count: 'exact', head: true });
+  const { count: totalWaitlists, error: waitlistError } = await supabase.from('waitlists').select('*', { count: 'exact', head: true });
+  
+  if (regError || waitlistError) {
+    console.error('Error fetching stats:', regError || waitlistError);
+    return res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+  
+  res.json({ totalRegistrations: totalRegistrations || 0, totalWaitlists: totalWaitlists || 0, totalLoggedIn: 0 }); // totalLoggedIn not tracked in simple DB
+});
+
+// Register User
+app.post('/api/register', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not connected' });
+  const { email, password, name } = req.body;
+  const { error } = await supabase.from('users').insert({ email, password, name });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
 
 // Get configurations
 app.get('/api/admin/config', async (req, res) => {

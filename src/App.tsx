@@ -82,6 +82,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
 
   // Admin Dashboard Data State
   const [waitlistUsers, setWaitlistUsers] = useState<WaitlistUser[]>([]);
+  const [stats, setStats] = useState({ totalRegistrations: 0, totalWaitlists: 0, totalLoggedIn: 0 });
   const [adminConfig, setAdminConfig] = useState<AdminConfig>({
     spreadsheetId: '',
     googleEmail: '',
@@ -158,18 +159,32 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     );
   }, []);
 
-  // Sync state if logged in & auto-refresh every 60 seconds
+  // Sync state if logged in & auto-refresh every 30 seconds
   useEffect(() => {
     if (!adminIsLoggedIn) return;
 
     fetchAdminData();
+    fetchStats();
 
     const interval = setInterval(() => {
       fetchAdminData();
-    }, 60000);
+      fetchStats();
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [adminIsLoggedIn]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch(API_BASE_URL + '/api/admin/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleFetchConfig = async () => {
     try {
@@ -540,17 +555,6 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
       user.grade?.toLowerCase().includes(q)
     );
   });
-
-  // Calculate statistics for Admin View
-  const stats = {
-    total: waitlistUsers.length,
-    optIn: waitlistUsers.filter(u => u.notify_launch).length,
-    countries: Array.from(new Set(waitlistUsers.map(u => u.country))).length,
-    gradeStats: waitlistUsers.reduce((acc: any, curr) => {
-      acc[curr.grade] = (acc[curr.grade] || 0) + 1;
-      return acc;
-    }, {})
-  };
 
   return (
     <div id="app_root" className="bg-slate-50 text-slate-900 w-full relative max-w-[1024px] mx-auto min-h-screen flex flex-col font-sans overflow-x-hidden p-2 sm:p-4 md:p-8">
@@ -1522,15 +1526,15 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                 </div>
 
                 {/* Dashboard Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   
                   <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-xs flex items-center gap-4">
                     <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
                       <Database className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Registrations</span>
-                      <span className="text-2xl font-black text-slate-900">{stats.total}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Registered Users</span>
+                      <span className="text-2xl font-black text-slate-900">{stats.totalRegistrations}</span>
                     </div>
                   </div>
 
@@ -1539,8 +1543,8 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                       <Mail className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Email Alerts Opt-In</span>
-                      <span className="text-2xl font-black text-slate-900">{stats.optIn}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Waitlist Submissions</span>
+                      <span className="text-2xl font-black text-slate-900">{stats.totalWaitlists}</span>
                     </div>
                   </div>
 
@@ -1549,18 +1553,8 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                       <Globe className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Countries</span>
-                      <span className="text-2xl font-black text-slate-900">{stats.countries}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-xs flex items-center gap-4">
-                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
-                      <Award className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Signups</span>
-                      <span className="text-2xl font-black text-slate-900">1,000</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Users Logged In</span>
+                      <span className="text-2xl font-black text-slate-900">{stats.totalLoggedIn}</span>
                     </div>
                   </div>
 
