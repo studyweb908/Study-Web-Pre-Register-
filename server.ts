@@ -92,6 +92,9 @@ app.get('/api/health', (req, res) => {
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'studyweb2026admin').trim();
 
+console.log('DEBUG: ADMIN_EMAIL:', ADMIN_EMAIL);
+console.log('DEBUG: ADMIN_PASSWORD (length):', ADMIN_PASSWORD.length);
+
 // Admin: Login endpoint
 app.post('/api/admin/login', async (req, res) => {
   try {
