@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 
 // Load environment variables.
@@ -9,6 +10,7 @@ import 'dotenv/config';
 const app = express();
 const PORT = 3000;
 
+app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -17,7 +19,8 @@ app.use((req, res, next) => {
 });
 
 // Ensure the local data directory exists.
-const DATA_DIR = path.join(process.cwd(), 'data');
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+const DATA_DIR = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -72,7 +75,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Admin Authentication Configuration
-const ADMIN_EMAIL = 'studyweb908@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'studyweb908@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'studyweb2026admin';
 
 // Admin: Login endpoint (custom simple password check)
@@ -451,9 +454,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!isVercel) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;

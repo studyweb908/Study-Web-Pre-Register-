@@ -40,6 +40,8 @@ import { initAuth, googleSignIn, logout as googleLogout, getAccessToken } from '
 import { WaitlistUser, AdminConfig } from './types';
 import { COUNTRIES } from './countries';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
 export default function App() {
   // Parallax Scroll Effects
   const { scrollY } = useScroll();
@@ -93,7 +95,7 @@ export default function App() {
   const handleSyncToGoogleSheets = async () => {
     setGoogleSyncing(true);
     try {
-      const response = await fetch('/api/admin/sync-sheet', { method: 'POST' });
+      const response = await fetch(API_BASE_URL + '/api/admin/sync-sheet', { method: 'POST' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to sync data');
       alert('Data synced to Google Sheets successfully!');
@@ -116,7 +118,7 @@ export default function App() {
   // Initialize Admin Check & Config Load
   useEffect(() => {
     // Load dynamic waitlist count on home launch
-    fetch('/api/admin/waitlists')
+    fetch(API_BASE_URL + '/api/admin/waitlists')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch');
         return res.json();
@@ -133,7 +135,7 @@ export default function App() {
       (user, token) => {
         setAdminGoogleUser(user);
         // Post/Sync token back to Express backend server
-        fetch('/api/admin/config', {
+        fetch(API_BASE_URL + '/api/admin/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ accessToken: token, googleEmail: user.email })
@@ -162,7 +164,7 @@ export default function App() {
 
   const handleFetchConfig = async () => {
     try {
-      const res = await fetch('/api/admin/config');
+      const res = await fetch(API_BASE_URL + '/api/admin/config');
       if (res.ok) {
         const data = await res.json();
         setAdminConfig(data);
@@ -175,7 +177,7 @@ export default function App() {
   const fetchAdminData = async () => {
     setDashboardLoading(true);
     try {
-      const resWait = await fetch('/api/admin/waitlists');
+      const resWait = await fetch(API_BASE_URL + '/api/admin/waitlists');
       if (!resWait.ok) throw new Error('Failed to fetch waitlists');
       const waitData = await resWait.json();
       setWaitlistUsers(waitData.waitlists || []);
@@ -197,7 +199,7 @@ export default function App() {
     if (!userToDelete) return;
     setDeleteLoading(true);
     try {
-      const response = await fetch(`/api/admin/waitlists/${userToDelete}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/api/admin/waitlists/${userToDelete}`, { method: 'DELETE' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to delete record');
       
@@ -273,7 +275,7 @@ export default function App() {
     }, 300);
 
     try {
-      const response = await fetch('/api/waitlist', {
+      const response = await fetch(API_BASE_URL + '/api/waitlist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -332,7 +334,7 @@ export default function App() {
     setAdminAuthLoading(true);
 
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch(API_BASE_URL + '/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: adminEmail, password: adminPassword })
@@ -377,7 +379,7 @@ export default function App() {
       const result = await googleSignIn();
       if (result) {
         // Send access token back to configuration
-        const r = await fetch('/api/admin/config', {
+        const r = await fetch(API_BASE_URL + '/api/admin/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -402,7 +404,7 @@ export default function App() {
     try {
       await googleLogout();
       // Remove token from backend
-      const r = await fetch('/api/admin/config', {
+      const r = await fetch(API_BASE_URL + '/api/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: null, googleEmail: null })
@@ -422,12 +424,12 @@ export default function App() {
   const handleAutoProvisionSheet = async () => {
     setSheetCreationLoading(true);
     try {
-      const tokenResponse = await fetch('/api/admin/config');
+      const tokenResponse = await fetch(API_BASE_URL + '/api/admin/config');
       const tokenData = await tokenResponse.json();
       
       const sessionToken = await getAccessToken();
 
-      const createResponse = await fetch('/api/admin/create-sheet', {
+      const createResponse = await fetch(API_BASE_URL + '/api/admin/create-sheet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: sessionToken })
