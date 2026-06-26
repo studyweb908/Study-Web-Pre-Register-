@@ -95,30 +95,8 @@ const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'studyweb2026admin').trim(
 console.log('DEBUG: ADMIN_EMAIL:', ADMIN_EMAIL);
 console.log('DEBUG: ADMIN_PASSWORD (length):', ADMIN_PASSWORD.length);
 
-// Admin: Login endpoint
-app.post('/api/admin/login', async (req, res) => {
-  try {
-    const { email, password } = req.body || {};
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required' });
-    }
-    const checkEmail = email.trim().toLowerCase();
-    const checkPassword = password.trim();
-    
-    if (checkEmail === ADMIN_EMAIL.toLowerCase() && checkPassword === ADMIN_PASSWORD) {
-      return res.json({
-        success: true,
-        token: 'studyweb_admin_session_token_129841029',
-        user: { email: ADMIN_EMAIL, role: 'ADMIN' }
-      });
-    } else {
-      return res.status(401).json({ success: false, error: 'Invalid admin email or password' });
-    }
-  } catch (err) {
-    console.error('Unhandled error in /api/admin/login:', err);
-    return res.status(500).json({ success: false, error: 'Internal server error.' });
-  }
-});
+
+// Admin: Login endpoint moved to api/admin/login.ts
 
 // Get configurations
 app.get('/api/admin/config', async (req, res) => {
