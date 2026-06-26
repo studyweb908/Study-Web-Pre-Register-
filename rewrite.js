@@ -1,4 +1,6 @@
-import express from 'express';
+const fs = require('fs');
+
+const content = `import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
@@ -16,7 +18,7 @@ app.use((req, res, next) => {
   if (!req.url.startsWith('/api')) {
     req.url = '/api' + (req.url === '/' ? '' : req.url);
   }
-  console.log(`[DEBUG] Received request: ${req.method} ${req.url}`);
+  console.log(\`[DEBUG] Received request: \${req.method} \${req.url}\`);
   next();
 });
 
@@ -149,7 +151,7 @@ app.post('/api/admin/create-sheet', async (req, res) => {
     const sheetResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': \`Bearer \${accessToken}\`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -171,10 +173,10 @@ app.post('/api/admin/create-sheet', async (req, res) => {
     const sheetData = await sheetResponse.json();
     const spreadsheetId = sheetData.spreadsheetId;
 
-    const headerResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Waitlist!A1:G1?valueInputOption=RAW`, {
+    const headerResponse = await fetch(\`https://sheets.googleapis.com/v4/spreadsheets/\${spreadsheetId}/values/Waitlist!A1:G1?valueInputOption=RAW\`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': \`Bearer \${accessToken}\`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -213,9 +215,9 @@ async function syncToGoogleSheet() {
       u.first_name, u.last_name, u.email, u.grade, u.country, u.notify_launch ? 'Yes' : 'No', u.created_at
     ]) : [];
 
-    const clearResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:clear`, {
+    const clearResponse = await fetch(\`https://sheets.googleapis.com/v4/spreadsheets/\${cfg.spreadsheetId}/values/\${range}:clear\`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${cfg.accessToken}` }
+      headers: { 'Authorization': \`Bearer \${cfg.accessToken}\` }
     });
 
     if (!clearResponse.ok) {
@@ -229,10 +231,10 @@ async function syncToGoogleSheet() {
     }
 
     if (values.length > 0) {
-      const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
+      const appendResponse = await fetch(\`https://sheets.googleapis.com/v4/spreadsheets/\${cfg.spreadsheetId}/values/\${range}:append?valueInputOption=RAW\`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${cfg.accessToken}`,
+          'Authorization': \`Bearer \${cfg.accessToken}\`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ values })
@@ -290,7 +292,7 @@ app.post('/api/waitlist', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required.' });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Please enter a valid email address.' });
     }
@@ -318,10 +320,10 @@ app.post('/api/waitlist', async (req, res) => {
     if (cfg.spreadsheetId && cfg.accessToken) {
       try {
         const range = 'Waitlist!A:G';
-        const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
+        const appendResponse = await fetch(\`https://sheets.googleapis.com/v4/spreadsheets/\${cfg.spreadsheetId}/values/\${range}:append?valueInputOption=RAW\`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${cfg.accessToken}`,
+            'Authorization': \`Bearer \${cfg.accessToken}\`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -350,27 +352,27 @@ app.post('/api/waitlist', async (req, res) => {
     if (cfg.accessToken) {
       try {
         const subject = 'Welcome to StudyWeb 🚀';
-        const bodyText = `Hi ${first_name},<br><br>
+        const bodyText = \`Hi \${first_name},<br><br>
 You're officially on the StudyWeb waitlist, and you've secured <strong style="color: #4f46e5;">50% off</strong> your first month!<br><br>
 We'll notify you as soon as early access becomes available.<br><br>
 <b>From Confusion To Clarity.</b><br><br>
-— Team StudyWeb`;
+— Team StudyWeb\`;
 
         const str = [
-          `To: ${email}`,
-          `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+          \`To: \${email}\`,
+          \`Subject: =?utf-8?B?\${Buffer.from(subject).toString('base64')}?=\`,
           'Content-Type: text/html; charset=utf-8',
           'MIME-Version: 1.0',
           '',
           bodyText
-        ].join('\r\n');
+        ].join('\\r\\n');
         
-        const raw = Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const raw = Buffer.from(str).toString('base64').replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
 
         const mailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${cfg.accessToken}`,
+            'Authorization': \`Bearer \${cfg.accessToken}\`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ raw })
@@ -415,7 +417,7 @@ async function startServer() {
 
   if (!isVercel) {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(\`Server running on http://localhost:\${PORT}\`);
     });
   } else {
     app.use((req, res) => {
@@ -427,3 +429,6 @@ async function startServer() {
 startServer();
 
 export default app;
+`;
+
+fs.writeFileSync('server.ts', content, 'utf-8');
