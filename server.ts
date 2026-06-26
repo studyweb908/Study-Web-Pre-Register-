@@ -438,4 +438,6 @@ async function startServer() {
   }
 }
 
+export { app };
+
 startServer();

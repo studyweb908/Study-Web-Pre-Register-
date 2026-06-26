@@ -1,3 +1,3 @@
-import app from '../dist/server';
+import { app } from '../server';
 
 export default app;
