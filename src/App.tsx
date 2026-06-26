@@ -97,8 +97,12 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     setGoogleSyncing(true);
     try {
       const response = await fetch(API_BASE_URL + '/api/admin/sync-sheet', { method: 'POST' });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('API Error:', text);
+        throw new Error(`Failed to sync data: ${response.status}`);
+      }
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to sync data');
       alert('Data synced to Google Sheets successfully!');
     } catch (e: any) {
       alert('Error syncing data: ' + e.message);
@@ -120,8 +124,12 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
   useEffect(() => {
     // Load dynamic waitlist count on home launch
     fetch(API_BASE_URL + '/api/admin/waitlists')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch');
+      .then(async res => {
+        if (!res.ok) {
+          const text = await res.text();
+          console.error('API Error:', text);
+          throw new Error('Failed to fetch');
+        }
         return res.json();
       })
       .then(data => {
@@ -169,6 +177,9 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
       if (res.ok) {
         const data = await res.json();
         setAdminConfig(data);
+      } else {
+        const text = await res.text();
+        console.error('Config Fetch Error:', text);
       }
     } catch (e) {
       console.error(e);
@@ -179,7 +190,11 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     setDashboardLoading(true);
     try {
       const resWait = await fetch(API_BASE_URL + '/api/admin/waitlists');
-      if (!resWait.ok) throw new Error('Failed to fetch waitlists');
+      if (!resWait.ok) {
+        const text = await resWait.text();
+        console.error('Waitlist Fetch Error:', text);
+        throw new Error('Failed to fetch waitlists');
+      }
       const waitData = await resWait.json();
       setWaitlistUsers(waitData.waitlists || []);
       
@@ -201,8 +216,12 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     setDeleteLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/admin/waitlists/${userToDelete}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Delete Error:', text);
+        throw new Error(`Failed to delete record: ${response.status}`);
+      }
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to delete record');
       
       // Remove from local state immediately for fast feedback
       setWaitlistUsers(prev => prev.filter(u => u.id !== userToDelete));
@@ -288,12 +307,13 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
       setFormProgress(100);
 
       if (!response.ok) {
+        const text = await response.text();
+        console.error('Form Submit Error:', text);
         let errorMessage = 'Something went wrong. Please try again.';
         try {
-          const errorData = await response.json();
+          const errorData = JSON.parse(text);
           errorMessage = errorData.error || errorMessage;
         } catch (e) {
-          // If response was not JSON, use status
           errorMessage = `Server error: ${response.status}`;
         }
         throw new Error(errorMessage);
@@ -341,11 +361,18 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
         body: JSON.stringify({ email: adminEmail, password: adminPassword })
       });
 
-      const resData = await response.json();
-
       if (!response.ok) {
-        throw new Error(resData.error || 'Access Denied.');
+        const text = await response.text();
+        console.error('Admin Login Error:', text);
+        let errorMsg = 'Access Denied.';
+        try {
+          const resData = JSON.parse(text);
+          errorMsg = resData.error || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
       }
+
+      const resData = await response.json();
 
       sessionStorage.setItem('studyweb_admin_session', 'true');
       setAdminIsLoggedIn(true);
@@ -389,6 +416,9 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
         const configRes = await r.json();
         setAdminConfig(configRes.config);
         await fetchAdminData();
+      } else {
+        const text = await r.text();
+        console.error('Config Auth Error:', text);
       }
     } catch (error) {
       console.error(error);
@@ -442,6 +472,11 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     setSheetCreationLoading(true);
     try {
       const tokenResponse = await fetch(API_BASE_URL + '/api/admin/config');
+      if (!tokenResponse.ok) {
+        const text = await tokenResponse.text();
+        console.error('Token Fetch Error:', text);
+        throw new Error('Failed to fetch token');
+      }
       const tokenData = await tokenResponse.json();
       
       const sessionToken = await getAccessToken();
