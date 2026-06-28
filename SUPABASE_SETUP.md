@@ -25,15 +25,6 @@ CREATE TABLE waitlists (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
--- Create users table for authentication
-CREATE TABLE users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email text UNIQUE NOT NULL,
-  password text NOT NULL,
-  name text,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
-);
-
 -- Create config table for Google Sheets integration
 CREATE TABLE config (
   id integer PRIMARY KEY DEFAULT 1,
