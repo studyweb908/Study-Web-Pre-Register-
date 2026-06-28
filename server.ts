@@ -85,24 +85,35 @@ async function deleteWaitlist(id: string) {
 
 async function readConfig() {
   if (!supabase) return {};
-  const { data, error } = await supabase.from('config').select('*').eq('id', 1).maybeSingle();
-  if (error) {
-    console.error('Error reading config:', error);
+  try {
+    const { data, error } = await supabase.from('config').select('*').eq('id', 1).maybeSingle();
+    if (error) {
+      console.error('[ERROR] readConfig failed:', error.message, error.details || '');
+      return {};
+    }
+    return data || {};
+  } catch (err: any) {
+    console.error('[CRITICAL] readConfig unhandled error:', err.message || err);
     return {};
   }
-  return data || {};
 }
 
 async function writeConfig(cfg: any) {
   if (!supabase) return;
-  const { data } = await supabase.from('config').select('id').eq('id', 1).maybeSingle();
-  let error;
-  if (data) {
-    ({ error } = await supabase.from('config').update(cfg).eq('id', 1));
-  } else {
-    ({ error } = await supabase.from('config').insert({ id: 1, ...cfg }));
+  try {
+    const { data } = await supabase.from('config').select('id').eq('id', 1).maybeSingle();
+    let error;
+    if (data) {
+      ({ error } = await supabase.from('config').update(cfg).eq('id', 1));
+    } else {
+      ({ error } = await supabase.from('config').insert({ id: 1, ...cfg }));
+    }
+    if (error) {
+      console.error('[ERROR] writeConfig failed:', error.message, error.details || '');
+    }
+  } catch (err: any) {
+    console.error('[CRITICAL] writeConfig unhandled error:', err.message || err);
   }
-  if (error) console.error('Error writing config:', error);
 }
 
 // --------------------------------------------------------
@@ -187,8 +198,8 @@ app.get('/api/admin/stats', async (req, res) => {
     } else {
       totalRegistrations = userCount || 0;
     }
-  } catch (err) {
-    console.error('[CRITICAL] Unhandled error in stats retrieval:', err);
+  } catch (err: any) {
+    console.error('[CRITICAL] Unhandled error in stats retrieval:', err.message || err);
   }
   
   res.json({ totalRegistrations, totalWaitlists, totalLoggedIn });

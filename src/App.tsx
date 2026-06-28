@@ -177,9 +177,10 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
   }, [adminIsLoggedIn]);
 
   const fetchRegisteredUsers = async () => {
+    const url = API_BASE_URL + '/api/admin/users';
     try {
-      console.log('[DEBUG] Fetching registered users list...');
-      const res = await fetch(API_BASE_URL + '/api/admin/users');
+      console.log(`[DEBUG] Fetching registered users list from: ${url}`);
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
         setRegisteredUsers(data.users || []);
@@ -188,13 +189,15 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
         console.error('Users Fetch Error:', data.error || 'Unknown error');
       }
     } catch (e: any) {
-      console.error('Users Network Error:', e);
+      console.error(`Users Network Error (URL: ${url}):`, e.message);
     }
   };
 
   const fetchStats = async () => {
+    const url = API_BASE_URL + '/api/admin/stats';
     try {
-      const res = await fetch(API_BASE_URL + '/api/admin/stats');
+      console.log(`[DEBUG] Fetching stats from: ${url}`);
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
         setStats(data);
@@ -202,7 +205,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
         console.error('Stats Fetch Error:', data.error || 'Unknown error');
       }
     } catch (e: any) {
-      console.error('Stats Network Error:', e);
+      console.error(`Stats Network Error (URL: ${url}):`, e.message);
     }
   };
 
