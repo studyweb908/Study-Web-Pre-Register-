@@ -13,6 +13,15 @@ Add your Supabase project credentials to the `.env` file (or Vercel Environment 
 Run the following SQL in your Supabase SQL Editor to create the required tables:
 
 ```sql
+-- Create users table for internal registrations
+CREATE TABLE users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text,
+  email text UNIQUE NOT NULL,
+  password text NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
 -- Create waitlists table
 CREATE TABLE waitlists (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

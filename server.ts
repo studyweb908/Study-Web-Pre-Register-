@@ -30,8 +30,11 @@ app.use((req, res, next) => {
 const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
 const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('[CRITICAL] Supabase environment variables are missing! SUPABASE_URL or SUPABASE_ANON_KEY/SERVICE_ROLE_KEY is required.');
+if (!supabaseUrl) {
+  console.error('[CRITICAL] SUPABASE_URL is missing!');
+}
+if (!supabaseKey) {
+  console.error('[CRITICAL] SUPABASE_KEY (SERVICE_ROLE or ANON) is missing!');
 }
 
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
@@ -108,7 +111,16 @@ async function writeConfig(cfg: any) {
 
 // Public: Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: supabase ? 'connected' : 'disconnected' });
+  res.json({ 
+    status: 'ok', 
+    database: supabase ? 'connected' : 'disconnected',
+    env: {
+      has_url: !!supabaseUrl,
+      has_key: !!supabaseKey,
+      admin_email: !!ADMIN_EMAIL,
+      admin_pass: !!ADMIN_PASSWORD
+    }
+  });
 });
 
 // Admin Authentication Configuration
@@ -197,8 +209,11 @@ app.get('/api/admin/users', async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[ERROR] Supabase: Failed to fetch users:', error.message);
-      return res.status(500).json({ error: error.message });
+      console.error('[ERROR] Supabase: Failed to fetch users:', error.message, error.details || '');
+      return res.status(500).json({ 
+        error: error.message, 
+        hint: 'Make sure the "users" table exists in Supabase. Check SUPABASE_SETUP.md for the SQL.' 
+      });
     }
 
     console.log(`[INFO] Successfully fetched ${data?.length || 0} users.`);
