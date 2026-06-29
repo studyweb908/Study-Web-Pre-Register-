@@ -579,7 +579,7 @@ async function startServer() {
   }
 }
 
-export { app };
+export default app;
 
 if (!isVercel) {
   startServer();
