@@ -135,8 +135,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // Admin Authentication Configuration
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Peer_Rayan').trim();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').replace(/['"]/g, '').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Peer_Rayan').replace(/['"]/g, '').trim();
 
 // Admin: Login endpoint
 app.post('/api/admin/login', async (req, res) => {
@@ -214,21 +214,34 @@ app.get('/api/admin/users', async (req, res) => {
 
   try {
     console.log('[DEBUG] Fetching all users from Supabase...');
-    const { data, error } = await supabase
+    // Fallback to waitlists for users list if users table isn't fully set up
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id, email, name, created_at')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[ERROR] Supabase: Failed to fetch users:', error.message, error.details || '');
-      return res.status(500).json({ 
-        error: error.message, 
-        hint: 'Make sure the "users" table exists in Supabase. Check SUPABASE_SETUP.md for the SQL.' 
-      });
+    if (userError) {
+      console.warn('[WARN] Failed to fetch from "users" table, falling back to "waitlists":', userError.message);
+      const { data: waitlistData, error: waitlistError } = await supabase
+        .from('waitlists')
+        .select('id, email, first_name, last_name, created_at')
+        .order('created_at', { ascending: false });
+        
+      if (waitlistError) {
+        return res.status(500).json({ error: waitlistError.message });
+      }
+      
+      const mappedUsers = (waitlistData || []).map((w: any) => ({
+        id: w.id,
+        email: w.email,
+        name: `${w.first_name} ${w.last_name}`.trim(),
+        created_at: w.created_at
+      }));
+      return res.json({ users: mappedUsers });
     }
 
-    console.log(`[INFO] Successfully fetched ${data?.length || 0} users.`);
-    res.json({ users: data || [] });
+    console.log(`[INFO] Successfully fetched ${userData?.length || 0} users.`);
+    res.json({ users: userData || [] });
   } catch (err) {
     console.error('[CRITICAL] Unhandled error in users retrieval:', err);
     res.status(500).json({ error: 'Internal server error fetching users' });
