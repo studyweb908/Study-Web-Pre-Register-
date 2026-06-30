@@ -352,7 +352,9 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
 
       if (!response.ok) {
         const text = await response.text();
-        console.error('Form Submit Error:', text);
+        if (response.status >= 500) {
+          console.error('Form Submit Error:', text);
+        }
         let errorMessage = 'Something went wrong. Please try again.';
         try {
           const errorData = JSON.parse(text);

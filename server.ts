@@ -439,15 +439,15 @@ app.post('/api/waitlist', async (req, res) => {
     }
 
     if (supabase) {
-      const { data: existingUser, error: checkError } = await supabase
+      const { data: existingUsers, error: checkError } = await supabase
         .from('waitlists')
         .select('email')
         .eq('email', email)
-        .maybeSingle();
+        .limit(1);
 
       if (checkError) {
         console.error('[ERROR] Error checking existing email:', checkError.message);
-      } else if (existingUser) {
+      } else if (existingUsers && existingUsers.length > 0) {
         return res.status(400).json({ error: 'email already exists' });
       }
     }
