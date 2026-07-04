@@ -2,9 +2,14 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
+import { Buffer } from 'node:buffer';
 
 // Load environment variables.
 import 'dotenv/config';
+
+// Admin Authentication Configuration
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').replace(/['"]/g, '').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Peer_Rayan').replace(/['"]/g, '').trim();
 
 const app = express();
 const PORT = 3000;
@@ -27,8 +32,8 @@ app.use((req, res, next) => {
 // --------------------------------------------------------
 // SUPABASE & GOOGLE SETUP
 // --------------------------------------------------------
-const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
-const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/['"]/g, '').trim();
+const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '').replace(/['"]/g, '').trim();
 
 if (!supabaseUrl) {
   console.error('[CRITICAL] SUPABASE_URL is missing!');
@@ -67,13 +72,17 @@ async function addWaitlist(user: any) {
     return;
   }
   
-  console.log('[DEBUG] Saving user to Supabase waitlist:', user.email);
-  const { error } = await supabase.from('waitlists').insert(user);
-  
-  if (error) {
-    console.error('[ERROR] Supabase: Failed to add to waitlist:', error.message, error.details);
-  } else {
-    console.log('[INFO] Successfully added user to Supabase waitlist.');
+  try {
+    console.log('[DEBUG] Saving user to Supabase waitlist:', user.email);
+    const { error } = await supabase.from('waitlists').insert(user);
+    
+    if (error) {
+      console.error('[ERROR] Supabase: Failed to add to waitlist:', error.message, error.details);
+    } else {
+      console.log('[INFO] Successfully added user to Supabase waitlist.');
+    }
+  } catch (err: any) {
+    console.error('[CRITICAL] Exception inside addWaitlist:', err.message || err);
   }
 }
 
@@ -133,10 +142,6 @@ app.get('/api/health', (req, res) => {
     }
   });
 });
-
-// Admin Authentication Configuration
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'studyweb908@gmail.com').replace(/['"]/g, '').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'Peer_Rayan').replace(/['"]/g, '').trim();
 
 // Admin: Login endpoint
 app.post('/api/admin/login', async (req, res) => {
@@ -452,16 +457,20 @@ app.post('/api/waitlist', async (req, res) => {
     }
 
     if (supabase) {
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('waitlists')
-        .select('email')
-        .eq('email', email)
-        .limit(1);
+      try {
+        const { data: existingUsers, error: checkError } = await supabase
+          .from('waitlists')
+          .select('email')
+          .eq('email', email)
+          .limit(1);
 
-      if (checkError) {
-        console.error('[ERROR] Error checking existing email:', checkError.message);
-      } else if (existingUsers && existingUsers.length > 0) {
-        return res.status(400).json({ error: 'email already exists' });
+        if (checkError) {
+          console.error('[ERROR] Error checking existing email:', checkError.message);
+        } else if (existingUsers && existingUsers.length > 0) {
+          return res.status(400).json({ error: 'email already exists' });
+        }
+      } catch (checkErr: any) {
+        console.error('[ERROR] Exception checking existing email:', checkErr.message || checkErr);
       }
     }
 
@@ -487,132 +496,141 @@ app.post('/api/waitlist', async (req, res) => {
     let emailSent = false;
     let syncError = '';
 
-    // 2. Synchronize to Google Sheets
-    if (cfg.spreadsheetId && cfg.accessToken) {
-      try {
-        console.log("Attempting to append to Google Sheets...");
-        const range = 'Waitlist!A:G';
-        const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${cfg.accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            values: [[first_name, last_name, email, grade, country, notify_launch ? 'Yes' : 'No', timestamp]]
-          })
-        });
+    const syncTasks: Promise<any>[] = [];
 
-        if (appendResponse.ok) {
-          console.log("Appended to Google Sheets successfully.");
-          sheetSaved = true;
-        } else {
-          const errText = await appendResponse.text();
-          console.error("Failed to append to Google Sheets:", errText);
-          if (appendResponse.status === 401 || errText.includes('authError') || errText.includes('UNAUTHENTICATED')) {
-            syncError = 'Admin Google credentials expired.';
-            cfg.accessToken = null;
-            await writeConfig(cfg);
+    // 2. Synchronize to Google Sheets (Parallel Task)
+    if (cfg.spreadsheetId && cfg.accessToken) {
+      syncTasks.push((async () => {
+        try {
+          console.log("Attempting to append to Google Sheets...");
+          const range = 'Waitlist!A:G';
+          const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${cfg.accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              values: [[first_name, last_name, email, grade, country, notify_launch ? 'Yes' : 'No', timestamp]]
+            })
+          });
+
+          if (appendResponse.ok) {
+            console.log("Appended to Google Sheets successfully.");
+            sheetSaved = true;
           } else {
-            syncError = 'Failed to append to Google Sheets: ' + appendResponse.status;
+            const errText = await appendResponse.text();
+            console.error("Failed to append to Google Sheets:", errText);
+            if (appendResponse.status === 401 || errText.includes('authError') || errText.includes('UNAUTHENTICATED')) {
+              syncError = 'Admin Google credentials expired.';
+              cfg.accessToken = null;
+              await writeConfig(cfg);
+            } else {
+              syncError = 'Failed to append to Google Sheets: ' + appendResponse.status;
+            }
           }
+        } catch (sheetErr: any) {
+          console.error("Error appending to Google Sheets:", sheetErr);
+          syncError = sheetErr.message;
         }
-      } catch (sheetErr: any) {
-        console.error("Error appending to Google Sheets:", sheetErr);
-        syncError = sheetErr.message;
-      }
+      })());
     }
 
-    // 3. Send automated Welcome Email & Admin Notification
+    // 3. Send automated Welcome Email (Parallel Task)
     if (cfg.accessToken) {
-      try {
-        console.log("Attempting to send welcome email...");
-        const subject = 'Welcome to StudyWeb 🚀';
-        const bodyText = `Hi ${first_name},<br><br>
+      syncTasks.push((async () => {
+        try {
+          console.log("Attempting to send welcome email...");
+          const subject = 'Welcome to StudyWeb 🚀';
+          const bodyText = `Hi ${first_name},<br><br>
 You're officially on the StudyWeb waitlist, and you've secured <strong style="color: #4f46e5;">50% off</strong> your first month!<br><br>
 We'll notify you as soon as early access becomes available.<br><br>
 <b>From Confusion To Clarity.</b><br><br>
 — Team StudyWeb`;
 
-        const str = [
-          `To: ${email}`,
-          `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
-          'Content-Type: text/html; charset=utf-8',
-          'MIME-Version: 1.0',
-          '',
-          bodyText
-        ].join('\r\n');
-        
-        const raw = Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          const str = [
+            `To: ${email}`,
+            `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+            'Content-Type: text/html; charset=utf-8',
+            'MIME-Version: 1.0',
+            '',
+            bodyText
+          ].join('\r\n');
+          
+          const raw = Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-        const mailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${cfg.accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ raw })
-        });
+          const mailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${cfg.accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ raw })
+          });
 
-        if (mailResponse.ok) {
-          console.log("Welcome email sent successfully.");
-          emailSent = true;
-        } else {
-          const errText = await mailResponse.text();
-          console.error("Failed to send welcome email:", errText);
+          if (mailResponse.ok) {
+            console.log("Welcome email sent successfully.");
+            emailSent = true;
+          } else {
+            const errText = await mailResponse.text();
+            console.error("Failed to send welcome email:", errText);
+          }
+        } catch (mailErr) {
+          console.error('Gmail API transmission error:', mailErr);
         }
-      } catch (mailErr) {
-        console.error('Gmail API transmission error:', mailErr);
-      }
+      })());
 
-      // Send Notification Email to Admin
-      try {
-        console.log("Attempting to send admin notification email...");
-        const adminSubject = `🔥 New Waitlist Signup: ${first_name} ${last_name}`;
-        const adminBodyText = `
-          <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h2 style="color: #4f46e5; margin-top: 0;">New Waitlist Registration!</h2>
-            <p>A new user has just joined the StudyWeb waitlist:</p>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold; width: 120px;">Name:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${first_name} ${last_name}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Email:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><a href="mailto:${email}">${email}</a></td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Class/Grade:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${grade}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Country:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${country}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Notify Launch:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${notify_launch ? 'Yes' : 'No'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Signed Up At:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${timestamp}</td>
-              </tr>
-            </table>
-            <p style="margin-top: 20px; font-size: 12px; color: #64748b;">
-              This is an automated notification from your StudyWeb Landing Page.
-            </p>
-          </div>
-        `;
+      // 4. Send Admin Notification Email (Parallel Task)
+      syncTasks.push((async () => {
+        try {
+          console.log("Attempting to send admin notification email...");
+          const adminSubject = `🔥 New Waitlist Signup: ${first_name} ${last_name}`;
+          const adminBodyText = `
+            <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <h2 style="color: #4f46e5; margin-top: 0;">New Waitlist Registration!</h2>
+              <p>A new user has just joined the StudyWeb waitlist:</p>
+              <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold; width: 120px;">Name:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${first_name} ${last_name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Email:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><a href="mailto:${email}">${email}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Class/Grade:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${grade}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Country:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${country}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Notify Launch:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${notify_launch ? 'Yes' : 'No'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Signed Up At:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${timestamp}</td>
+                </tr>
+              </table>
+              <p style="margin-top: 20px; font-size: 12px; color: #64748b;">
+                This is an automated notification from your StudyWeb Landing Page.
+              </p>
+            </div>
+          `;
 
-        const recipients = [ADMIN_EMAIL];
-        if (cfg.googleEmail && cfg.googleEmail.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-          recipients.push(cfg.googleEmail.trim());
-        }
+          const recipients = [ADMIN_EMAIL];
+          if (cfg.googleEmail && cfg.googleEmail.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+            recipients.push(cfg.googleEmail.trim());
+          }
 
-        for (const recipient of recipients) {
+          // Single transmission to multiple recipients
+          const toHeader = recipients.join(', ');
+
           const adminStr = [
-            `To: ${recipient}`,
+            `To: ${toHeader}`,
             `Subject: =?utf-8?B?${Buffer.from(adminSubject).toString('base64')}?=`,
             'Content-Type: text/html; charset=utf-8',
             'MIME-Version: 1.0',
@@ -632,14 +650,30 @@ We'll notify you as soon as early access becomes available.<br><br>
           });
 
           if (adminMailResponse.ok) {
-            console.log(`Admin notification email sent successfully to ${recipient}.`);
+            console.log(`Admin notification email sent successfully to ${toHeader}.`);
           } else {
             const errText = await adminMailResponse.text();
-            console.error(`Failed to send admin notification email to ${recipient}:`, errText);
+            console.error(`Failed to send admin notification email to ${toHeader}:`, errText);
           }
+        } catch (adminMailErr) {
+          console.error('Gmail API transmission error for admin email:', adminMailErr);
         }
-      } catch (adminMailErr) {
-        console.error('Gmail API transmission error for admin email:', adminMailErr);
+      })());
+    }
+
+    // Wait for all integration tasks with a safety timeout of 7 seconds to prevent Vercel 10s lambda timeout
+    if (syncTasks.length > 0) {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Integration synchronization tasks exceeded 7-second safety window')), 7000)
+      );
+      try {
+        await Promise.race([
+          Promise.allSettled(syncTasks),
+          timeoutPromise
+        ]);
+        console.log("[INFO] All waitlist background tasks finished or settled successfully.");
+      } catch (raceErr: any) {
+        console.warn("[WARN] Integration tasks safety timeout triggered:", raceErr.message);
       }
     }
 
