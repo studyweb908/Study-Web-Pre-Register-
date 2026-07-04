@@ -523,7 +523,7 @@ app.post('/api/waitlist', async (req, res) => {
       }
     }
 
-    // 3. Send automated Welcome Email
+    // 3. Send automated Welcome Email & Admin Notification
     if (cfg.accessToken) {
       try {
         console.log("Attempting to send welcome email...");
@@ -563,6 +563,83 @@ We'll notify you as soon as early access becomes available.<br><br>
         }
       } catch (mailErr) {
         console.error('Gmail API transmission error:', mailErr);
+      }
+
+      // Send Notification Email to Admin
+      try {
+        console.log("Attempting to send admin notification email...");
+        const adminSubject = `🔥 New Waitlist Signup: ${first_name} ${last_name}`;
+        const adminBodyText = `
+          <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #4f46e5; margin-top: 0;">New Waitlist Registration!</h2>
+            <p>A new user has just joined the StudyWeb waitlist:</p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold; width: 120px;">Name:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${first_name} ${last_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Email:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><a href="mailto:${email}">${email}</a></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Class/Grade:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${grade}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Country:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${country}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Notify Launch:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${notify_launch ? 'Yes' : 'No'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-weight: bold;">Signed Up At:</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${timestamp}</td>
+              </tr>
+            </table>
+            <p style="margin-top: 20px; font-size: 12px; color: #64748b;">
+              This is an automated notification from your StudyWeb Landing Page.
+            </p>
+          </div>
+        `;
+
+        const recipients = [ADMIN_EMAIL];
+        if (cfg.googleEmail && cfg.googleEmail.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+          recipients.push(cfg.googleEmail.trim());
+        }
+
+        for (const recipient of recipients) {
+          const adminStr = [
+            `To: ${recipient}`,
+            `Subject: =?utf-8?B?${Buffer.from(adminSubject).toString('base64')}?=`,
+            'Content-Type: text/html; charset=utf-8',
+            'MIME-Version: 1.0',
+            '',
+            adminBodyText
+          ].join('\r\n');
+
+          const adminRaw = Buffer.from(adminStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+          const adminMailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${cfg.accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ raw: adminRaw })
+          });
+
+          if (adminMailResponse.ok) {
+            console.log(`Admin notification email sent successfully to ${recipient}.`);
+          } else {
+            const errText = await adminMailResponse.text();
+            console.error(`Failed to send admin notification email to ${recipient}:`, errText);
+          }
+        }
+      } catch (adminMailErr) {
+        console.error('Gmail API transmission error for admin email:', adminMailErr);
       }
     }
 
