@@ -1,5 +1,5 @@
 import { initializeApp, getApp } from 'firebase/app';
-import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, signInWithRedirect, signInWithPopup, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 
 // Import our configuration
@@ -59,16 +59,36 @@ export const initAuth = (
 };
 
 // Must be called from a button click or user interaction
-export const googleSignIn = async (): Promise<void> => {
+export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
-    await signInWithRedirect(auth, provider);
+    let result;
+    try {
+      console.log('[INFO] Attempting Google Sign-In with Popup...');
+      result = await signInWithPopup(auth, provider);
+    } catch (popupError: any) {
+      console.warn('[WARN] Popup sign-in blocked or failed, falling back to redirect:', popupError);
+      if (popupError.code === 'auth/unauthorized-domain') {
+        throw popupError; // Keep the actual error for transparency
+      }
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
+    if (result) {
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        cachedAccessToken = credential.accessToken;
+        return { user: result.user, accessToken: cachedAccessToken };
+      }
+    }
   } catch (error: any) {
     console.error('Sign in error:', error);
     throw error;
   } finally {
     isSigningIn = false;
   }
+  return null;
 };
 
 export const getAccessToken = async (): Promise<string | null> => {

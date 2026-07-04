@@ -486,9 +486,22 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
   const handleConnectGoogle = async () => {
     setGoogleAuthLoading(true);
     try {
-      await googleSignIn();
-    } catch (error) {
-      console.error(error);
+      const result = await googleSignIn();
+      if (result) {
+        await processGoogleAuthResult(result);
+      }
+    } catch (error: any) {
+      console.error('Google Connect Error:', error);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert(
+          'Firebase Error: This domain is not authorized for Google Sign-In.\n\n' +
+          'To fix this, go to Firebase Console -> Authentication -> Settings -> Authorized Domains, ' +
+          'and add this current domain to the list of authorized domains.'
+        );
+      } else {
+        alert('Google Sign-In failed: ' + (error.message || error));
+      }
+    } finally {
       setGoogleAuthLoading(false);
     }
   };
