@@ -277,15 +277,15 @@ You can now log in and begin using your personalized Socratic learning tools.<br
 — Team StudyWeb`;
 
       const userStr = [
-        `To: ${email}`,
-        `Subject: =?utf-8?B?${Buffer.from(userSubject).toString('base64')}?=`,
+        `To: ${email.trim()}`,
+        `Subject: ${userSubject}`,
         'Content-Type: text/html; charset=utf-8',
         'MIME-Version: 1.0',
         '',
         userBodyText
       ].join('\r\n');
       
-      const userRaw = Buffer.from(userStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const userRaw = Buffer.from(userStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
       await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         method: 'POST',
@@ -307,15 +307,15 @@ A new user has registered an account on the StudyWeb Platform!<br><br>
 — StudyWeb System`;
 
       const adminStr = [
-        `To: ${ADMIN_EMAIL}`,
-        `Subject: =?utf-8?B?${Buffer.from(adminSubject).toString('base64')}?=`,
+        `To: ${ADMIN_EMAIL.trim()}`,
+        `Subject: ${adminSubject}`,
         'Content-Type: text/html; charset=utf-8',
         'MIME-Version: 1.0',
         '',
         adminBodyText
       ].join('\r\n');
       
-      const adminRaw = Buffer.from(adminStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const adminRaw = Buffer.from(adminStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
       await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         method: 'POST',
@@ -604,15 +604,15 @@ We'll notify you as soon as early access becomes available.<br><br>
 — Team StudyWeb`;
 
         const str = [
-          `To: ${email}`,
-          `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+          `To: ${email.trim()}`,
+          `Subject: ${subject}`,
           'Content-Type: text/html; charset=utf-8',
           'MIME-Version: 1.0',
           '',
           bodyText
         ].join('\r\n');
         
-        const raw = Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const raw = Buffer.from(str, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
         const mailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
           method: 'POST',
@@ -647,15 +647,15 @@ Keep up the momentum!<br><br>
 — StudyWeb System`;
 
         const adminStr = [
-          `To: ${ADMIN_EMAIL}`,
-          `Subject: =?utf-8?B?${Buffer.from(adminSubject).toString('base64')}?=`,
+          `To: ${ADMIN_EMAIL.trim()}`,
+          `Subject: ${adminSubject}`,
           'Content-Type: text/html; charset=utf-8',
           'MIME-Version: 1.0',
           '',
           adminBodyText
         ].join('\r\n');
         
-        const adminRaw = Buffer.from(adminStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const adminRaw = Buffer.from(adminStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
         const adminMailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
           method: 'POST',

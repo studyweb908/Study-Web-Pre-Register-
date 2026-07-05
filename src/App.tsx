@@ -1556,6 +1556,117 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
 
                 </div>
 
+                {/* Google Workspace Setup Block */}
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-6">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1">
+                      <h3 className="font-extrabold text-lg text-slate-900 font-heading flex items-center gap-2">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-indigo-600"></span>
+                        Google Workspace & Automated Email Status
+                      </h3>
+                      <p className="text-xs text-slate-500 max-w-2xl">
+                        Connect your administrator Google account to automatically send Welcome Emails to waitlist signups/registered users, and synchronize data to Google Sheets in real-time.
+                      </p>
+                    </div>
+                    
+                    {/* Status badge */}
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${adminConfig.isConnected ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                        <span className={`w-2 h-2 rounded-full ${adminConfig.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                        {adminConfig.isConnected ? `Connected: ${adminConfig.googleEmail || 'Active'}` : 'Google Disconnected'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                    
+                    {/* Column 1: Connection status and authenticate */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between space-y-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-800">1. Google Authorization</h4>
+                        <p className="text-[11px] text-slate-500 mt-1">Requires Gmail send and Google Sheets edit permissions.</p>
+                      </div>
+                      
+                      {!adminConfig.isConnected ? (
+                        <button
+                          onClick={handleConnectGoogle}
+                          disabled={googleAuthLoading}
+                          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer flex justify-center items-center gap-2"
+                        >
+                          {googleAuthLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Connecting...
+                            </>
+                          ) : (
+                            'Authorize Google Account'
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleDisconnectGoogle}
+                          className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer"
+                        >
+                          Disconnect Account
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Column 2: Sheet provisioning */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between space-y-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-800">2. Google Sheets Tracker</h4>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          {adminConfig.spreadsheetId 
+                            ? `Spreadsheet linked: ${adminConfig.spreadsheetId.substring(0, 16)}...` 
+                            : 'Create a spreadsheet to save all waitlist signups automatically.'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={handleAutoProvisionSheet}
+                        disabled={!adminConfig.isConnected || sheetCreationLoading}
+                        className="w-full bg-indigo-50 hover:bg-indigo-100 disabled:opacity-40 text-indigo-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer flex justify-center items-center gap-2"
+                      >
+                        {sheetCreationLoading ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Provisioning Sheet...
+                          </>
+                        ) : adminConfig.spreadsheetId ? (
+                          'Re-create / Link Google Sheet'
+                        ) : (
+                          'Auto-create Google Sheet'
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Column 3: Manual actions */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between space-y-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-800">3. Waitlist Synchronization</h4>
+                        <p className="text-[11px] text-slate-500 mt-1">Manually force sync database submissions to Google Sheets.</p>
+                      </div>
+
+                      <button
+                        onClick={handleSyncToGoogleSheets}
+                        disabled={!adminConfig.isConnected || !adminConfig.spreadsheetId || googleSyncing}
+                        className="w-full bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 text-emerald-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer flex justify-center items-center gap-2"
+                      >
+                        {googleSyncing ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Syncing...
+                          </>
+                        ) : (
+                          'Force Sync Waitlists'
+                        )}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
                 {/* Dashboard Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   
