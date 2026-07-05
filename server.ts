@@ -164,7 +164,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Admin: Get Stats
-app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/dashboard-metrics', async (req, res) => {
   if (!supabase) {
     console.error('[ERROR] Stats endpoint called but Supabase is not connected.');
     return res.status(500).json({ error: 'Database not connected. Check environment variables.' });
@@ -206,7 +206,7 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 // Admin: Get All Registered Users
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/accounts', async (req, res) => {
   if (!supabase) {
     console.error('[ERROR] Users endpoint called but Supabase is not connected.');
     return res.status(500).json({ error: 'Database not connected. Check environment variables.' });
@@ -551,54 +551,19 @@ app.post('/api/waitlist', async (req, res) => {
     console.log("Saved to Supabase successfully.");
 
     const cfg = await readConfig();
-    console.log("Read configuration:", { hasSpreadsheetId: !!cfg.spreadsheetId, hasAccessToken: !!cfg.accessToken });
+    console.log("Read configuration:", { hasAccessToken: !!cfg.accessToken });
     let sheetSaved = false;
     let emailSent = false;
     let syncError = '';
 
-    // 2. Synchronize to Google Sheets
-    if (cfg.spreadsheetId && cfg.accessToken) {
-      try {
-        console.log("Attempting to append to Google Sheets...");
-        const range = 'Waitlist!A:G';
-        const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${cfg.accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            values: [[first_name, last_name, email, grade, country, notify_launch ? 'Yes' : 'No', timestamp]]
-          })
-        });
-
-        if (appendResponse.ok) {
-          console.log("Appended to Google Sheets successfully.");
-          sheetSaved = true;
-        } else {
-          const errText = await appendResponse.text();
-          console.error("Failed to append to Google Sheets:", errText);
-          if (appendResponse.status === 401 || errText.includes('authError') || errText.includes('UNAUTHENTICATED')) {
-            syncError = 'Admin Google credentials expired.';
-            cfg.accessToken = null;
-            await writeConfig(cfg);
-          } else {
-            syncError = 'Failed to append to Google Sheets: ' + appendResponse.status;
-          }
-        }
-      } catch (sheetErr: any) {
-        console.error("Error appending to Google Sheets:", sheetErr);
-        syncError = sheetErr.message;
-      }
-    }
-
-    // 3. Send automated Welcome Email and Admin Notification Email
+    // 2. Send automated Welcome Email and Admin Notification Email
     if (cfg.accessToken) {
       try {
         console.log("Attempting to send welcome email...");
         const subject = 'Welcome to StudyWeb 🚀';
         const bodyText = `Hi ${first_name},<br><br>
-You're officially on the StudyWeb waitlist, and you've secured <strong style="color: #4f46e5;">50% off</strong> your first month!<br><br>
+Thank you for registering your account on the StudyWeb waitlist!<br><br>
+This email confirms your successful registration. As an early member, you have officially received <strong style="color: #4f46e5;">50% off</strong> your first pre-registration!<br><br>
 We'll notify you as soon as early access becomes available.<br><br>
 <b>From Confusion To Clarity.</b><br><br>
 — Team StudyWeb`;
