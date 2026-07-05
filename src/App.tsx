@@ -113,7 +113,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
     }
   };
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'records' | 'users' | 'g_sync'>('records');
+  const [activeTab, setActiveTab] = useState<'records' | 'users'>('records');
 
   // Load Window Size for Confetti
   useEffect(() => {
@@ -1605,12 +1605,6 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                   >
                     Registered Users ({registeredUsers.length})
                   </button>
-                  <button 
-                    onClick={() => setActiveTab('g_sync')}
-                    className={`py-3 px-1.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'g_sync' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                  >
-                    Google Workspace
-                  </button>
                 </div>
 
                 {/* TAB 2: REGISTERED USERS LIST */}
@@ -1810,138 +1804,7 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                   </div>
                 )}
 
-                {/* TAB 2: GOOGLE WORKSPACE CONNECTION STATUS */}
-                {activeTab === 'g_sync' && (
-                  <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm max-w-3xl space-y-8">
-                    
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-bold font-heading">Google Workspace Setup</h3>
-                      <p className="text-xs text-slate-500 max-w-xl">
-                        Authorize the app using your Google Account to automatically append new signups to Google Sheets and invoke Gmail alerts dynamically on submission!
-                      </p>
-                    </div>
 
-                    {/* Authentication block */}
-                    <div className="border border-slate-100 bg-slate-50 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${adminConfig.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}></div>
-                          <span className="font-bold text-xs text-slate-900">
-                            Status: {adminConfig.isConnected ? 'Google Account Connected' : 'Google Account Not Connected'}
-                          </span>
-                        </div>
-                        {adminConfig.googleEmail && (
-                          <span className="text-xs text-slate-400 block ml-5">Logged in as {adminConfig.googleEmail}</span>
-                        )}
-                      </div>
-
-                      {adminConfig.isConnected ? (
-                        <button 
-                          onClick={handleDisconnectGoogle}
-                          className="py-2 px-4 border border-red-200 text-red-600 bg-white hover:bg-red-50 text-xs font-bold rounded-xl transition-all cursor-pointer"
-                        >
-                          Disconnect Google Account
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={handleConnectGoogle}
-                          disabled={googleAuthLoading}
-                          className="gsi-material-button text-xs"
-                        >
-                          <div className="gsi-material-button-state"></div>
-                          <div className="gsi-material-button-content-wrapper">
-                            <div className="gsi-material-button-icon">
-                              <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlnsXlink="http://www.w3.org/1999/xlink">
-                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                              </svg>
-                            </div>
-                            <span className="gsi-material-button-contents font-heading font-medium text-xs">Connect Google Workspace</span>
-                          </div>
-                        </button>
-                      )}
-
-                    </div>
-
-                    {/* Create Google sheet block */}
-                    {adminConfig.isConnected && (
-                      <div className="space-y-6 pt-4 border-t border-slate-100">
-                        <div className="flex items-start gap-4">
-                          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600">
-                            <Settings className="w-6 h-6" />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="font-bold text-sm text-slate-800">Auto-create Google sheet Waitlist Tracker</h4>
-                            <p className="text-xs text-slate-500 max-w-md leading-relaxed">
-                              Click below to instantly create a new Google Spreadsheet named "StudyWeb Waitlist Tracker" in your Google Drive. 
-                              The backend will automatically record all future signups directly in that sheet.
-                            </p>
-                          </div>
-                        </div>
-
-                        {adminConfig.spreadsheetId ? (
-                          <div className="p-5 bg-indigo-50/50 border border-indigo-150/40 rounded-xl space-y-3">
-                            <div className="flex items-center gap-1.5 text-xs text-indigo-800 font-bold">
-                              <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
-                              <span>WAITLIST SHEET PROVISIONED SUCCESSFULLY</span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                              Spreadsheet ID: <code className="bg-white px-1.5 py-0.5 rounded border text-[11px] font-mono">{adminConfig.spreadsheetId}</code>
-                            </p>
-                            <div className="flex flex-col gap-2">
-                              <a 
-                                href={`https://docs.google.com/spreadsheets/d/${adminConfig.spreadsheetId}/edit`}
-                                target="_blank" 
-                                referrerPolicy="no-referrer"
-                                className="inline-flex items-center gap-1 text-xs font-extrabold text-indigo-600 hover:text-indigo-800 hover:underline"
-                              >
-                                Open Google Sheet in new tab ↗
-                              </a>
-                              <button
-                                onClick={handleSyncToGoogleSheets}
-                                disabled={googleSyncing}
-                                className="w-fit mt-2 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                              >
-                                {googleSyncing ? (
-                                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> SYNCING...</>
-                                ) : (
-                                  <><Database className="w-3.5 h-3.5" /> PUSH ALL PAST DATA TO GOOGLE SHEETS</>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={handleAutoProvisionSheet}
-                            disabled={sheetCreationLoading}
-                            className="ml-14 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-xs font-black text-white rounded-xl shadow-md cursor-pointer flex items-center gap-2"
-                          >
-                            {sheetCreationLoading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Provisioning Spreadsheet...
-                              </>
-                            ) : (
-                              'Create & Link Google Sheet'
-                            )}
-                          </button>
-                        )}
-                        
-                        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl space-y-1 ml-14">
-                          <span className="text-[10px] font-black uppercase tracking-widest block">Note for email automation</span>
-                          <p className="text-xs">
-                            Once connected, the backend will automatically use the connected <span className="font-bold">Gmail API</span> to send the welcome email immediately after registration!
-                          </p>
-                        </div>
-
-                      </div>
-                    )}
-
-                  </div>
-                )}
 
               </div>
             )}
