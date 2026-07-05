@@ -270,6 +270,7 @@ app.post('/api/register', async (req, res) => {
       console.log("Sending registration emails...");
       // 1. User Welcome Email
       const userSubject = 'Welcome to StudyWeb Platform! 📚';
+      const encodedUserSubject = `=?utf-8?B?${Buffer.from(userSubject).toString('base64')}?=`;
       const userBodyText = `Hi ${name || 'there'},<br><br>
 Thank you for registering your account on the StudyWeb Platform!<br><br>
 You can now log in and begin using your personalized Socratic learning tools.<br><br>
@@ -278,7 +279,7 @@ You can now log in and begin using your personalized Socratic learning tools.<br
 
       const userStr = [
         `To: ${email.trim()}`,
-        `Subject: ${userSubject}`,
+        `Subject: ${encodedUserSubject}`,
         'Content-Type: text/html; charset=utf-8',
         'MIME-Version: 1.0',
         '',
@@ -287,7 +288,7 @@ You can now log in and begin using your personalized Socratic learning tools.<br
       
       const userRaw = Buffer.from(userStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-      await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      const userMailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${cfg.accessToken}`,
@@ -296,9 +297,11 @@ You can now log in and begin using your personalized Socratic learning tools.<br
         body: JSON.stringify({ raw: userRaw })
       });
 
-      // 2. Admin Notification Email
-      const adminSubject = `New Registered User Joined StudyWeb: ${name || 'User'} 👤`;
-      const adminBodyText = `Hi Admin,<br><br>
+      if (userMailResponse.ok) {
+        // 2. Admin Notification Email
+        const adminSubject = `New Registered User Joined StudyWeb: ${name || 'User'} 👤`;
+        const encodedAdminSubject = `=?utf-8?B?${Buffer.from(adminSubject).toString('base64')}?=`;
+        const adminBodyText = `Hi Admin,<br><br>
 A new user has registered an account on the StudyWeb Platform!<br><br>
 <strong>Details:</strong><br>
 • Name: <strong>${name || 'No Name'}</strong><br>
@@ -306,26 +309,30 @@ A new user has registered an account on the StudyWeb Platform!<br><br>
 • Registered At: <strong>${new Date().toISOString()}</strong><br><br>
 — StudyWeb System`;
 
-      const adminStr = [
-        `To: ${ADMIN_EMAIL.trim()}`,
-        `Subject: ${adminSubject}`,
-        'Content-Type: text/html; charset=utf-8',
-        'MIME-Version: 1.0',
-        '',
-        adminBodyText
-      ].join('\r\n');
-      
-      const adminRaw = Buffer.from(adminStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const adminStr = [
+          `To: ${ADMIN_EMAIL.trim()}`,
+          `Subject: ${encodedAdminSubject}`,
+          'Content-Type: text/html; charset=utf-8',
+          'MIME-Version: 1.0',
+          '',
+          adminBodyText
+        ].join('\r\n');
+        
+        const adminRaw = Buffer.from(adminStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-      await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${cfg.accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ raw: adminRaw })
-      });
-      console.log("[INFO] Registration emails sent successfully.");
+        await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cfg.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ raw: adminRaw })
+        });
+        console.log("[INFO] Registration emails sent successfully.");
+      } else {
+        const errText = await userMailResponse.text();
+        console.error("Failed to send user welcome email, skipping admin alert:", errText);
+      }
     } catch (mailErr) {
       console.error('[ERROR] Failed to send registration emails:', mailErr);
     }
@@ -561,6 +568,7 @@ app.post('/api/waitlist', async (req, res) => {
       try {
         console.log("Attempting to send welcome email...");
         const subject = 'Welcome to StudyWeb 🚀';
+        const encodedSubject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
         const bodyText = `Hi ${first_name},<br><br>
 Thank you for registering your account on the StudyWeb waitlist!<br><br>
 This email confirms your successful registration. As an early member, you have officially received <strong style="color: #4f46e5;">50% off</strong> your first pre-registration!<br><br>
@@ -570,7 +578,7 @@ We'll notify you as soon as early access becomes available.<br><br>
 
         const str = [
           `To: ${email.trim()}`,
-          `Subject: ${subject}`,
+          `Subject: ${encodedSubject}`,
           'Content-Type: text/html; charset=utf-8',
           'MIME-Version: 1.0',
           '',
@@ -591,15 +599,12 @@ We'll notify you as soon as early access becomes available.<br><br>
         if (mailResponse.ok) {
           console.log("Welcome email sent successfully.");
           emailSent = true;
-        } else {
-          const errText = await mailResponse.text();
-          console.error("Failed to send welcome email:", errText);
-        }
 
-        // Send Notification Email to Admin
-        console.log("Attempting to send admin waitlist alert...");
-        const adminSubject = `New Waitlist Signup: ${first_name} ${last_name} 🎉`;
-        const adminBodyText = `Hi Admin,<br><br>
+          // Send Notification Email to Admin ONLY IF welcome email succeeded
+          console.log("Attempting to send admin waitlist alert...");
+          const adminSubject = `New Waitlist Signup: ${first_name} ${last_name} 🎉`;
+          const encodedAdminSubject = `=?utf-8?B?${Buffer.from(adminSubject).toString('base64')}?=`;
+          const adminBodyText = `Hi Admin,<br><br>
 A new user has just joined the StudyWeb waitlist!<br><br>
 <strong>Details:</strong><br>
 • Name: <strong>${first_name} ${last_name}</strong><br>
@@ -611,31 +616,35 @@ A new user has just joined the StudyWeb waitlist!<br><br>
 Keep up the momentum!<br><br>
 — StudyWeb System`;
 
-        const adminStr = [
-          `To: ${ADMIN_EMAIL.trim()}`,
-          `Subject: ${adminSubject}`,
-          'Content-Type: text/html; charset=utf-8',
-          'MIME-Version: 1.0',
-          '',
-          adminBodyText
-        ].join('\r\n');
-        
-        const adminRaw = Buffer.from(adminStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          const adminStr = [
+            `To: ${ADMIN_EMAIL.trim()}`,
+            `Subject: ${encodedAdminSubject}`,
+            'Content-Type: text/html; charset=utf-8',
+            'MIME-Version: 1.0',
+            '',
+            adminBodyText
+          ].join('\r\n');
+          
+          const adminRaw = Buffer.from(adminStr, 'utf-8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-        const adminMailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${cfg.accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ raw: adminRaw })
-        });
+          const adminMailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${cfg.accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ raw: adminRaw })
+          });
 
-        if (adminMailResponse.ok) {
-          console.log("Admin notification email sent successfully.");
+          if (adminMailResponse.ok) {
+            console.log("Admin notification email sent successfully.");
+          } else {
+            const errText = await adminMailResponse.text();
+            console.error("Failed to send admin notification email:", errText);
+          }
         } else {
-          const errText = await adminMailResponse.text();
-          console.error("Failed to send admin notification email:", errText);
+          const errText = await mailResponse.text();
+          console.error("Failed to send welcome email:", errText);
         }
       } catch (mailErr) {
         console.error('Gmail API transmission error:', mailErr);
