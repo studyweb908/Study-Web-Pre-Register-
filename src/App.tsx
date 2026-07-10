@@ -902,12 +902,12 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
 
                     {/* Name block */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+                                      <div className="space-y-1">
+                        <label htmlFor="first_name" className="text-[10px] font-bold uppercase text-slate-400 ml-1">
                           First Name
                         </label>
                         <input 
+                          id="first_name"
                           type="text" 
                           required
                           placeholder="Alex" 
@@ -918,10 +918,11 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+                        <label htmlFor="last_name" className="text-[10px] font-bold uppercase text-slate-400 ml-1">
                           Last Name
                         </label>
                         <input 
+                          id="last_name"
                           type="text" 
                           required
                           placeholder="Jordan" 
@@ -930,12 +931,11 @@ export default function App({ defaultView = 'home' }: { defaultView?: 'home' | '
                           className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         />
                       </div>
-
                     </div>
 
                     {/* Email address */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+                      <label htmlFor="waitlist_email" className="text-[10px] font-bold uppercase text-slate-400 ml-1">
                         Email Address
                       </label>
                       <input 

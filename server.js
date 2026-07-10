@@ -1,2 +1,567 @@
-import { app } from './dist/server.cjs';
-export { app };
+// server.ts
+import express from "express";
+import path from "path";
+import cors from "cors";
+import { createClient } from "@supabase/supabase-js";
+import "dotenv/config";
+var app = express();
+var PORT = 3e3;
+app.use(cors());
+app.use(express.json());
+var isVercel = process.env.VERCEL === "1" || process.env.VERCEL === "true";
+app.use((req, res, next) => {
+  if (isVercel && !req.url.startsWith("/api")) {
+    req.url = "/api" + (req.url === "/" ? "" : req.url);
+  }
+  console.log(`[DEBUG] Received request: ${req.method} ${req.url}`);
+  next();
+});
+var supabaseUrl = (process.env.SUPABASE_URL || "").trim();
+var supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
+if (!supabaseUrl) {
+  console.error("[CRITICAL] SUPABASE_URL is missing!");
+}
+if (!supabaseKey) {
+  console.error("[CRITICAL] SUPABASE_KEY (SERVICE_ROLE or ANON) is missing!");
+}
+var supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+if (supabase) {
+  console.log("[INFO] Supabase client initialized successfully.");
+}
+async function readWaitlists() {
+  if (!supabase) {
+    console.error("[ERROR] Supabase client not initialized in readWaitlists");
+    return { data: [], error: "Database not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY." };
+  }
+  const { data, error } = await supabase.from("waitlists").select("*").order("created_at", { ascending: false });
+  if (error) {
+    console.error("[ERROR] Supabase: Failed to read waitlists:", error.message, error.details);
+    return { data: [], error: error.message };
+  }
+  return { data: data || [], error: null };
+}
+async function addWaitlist(user) {
+  if (!supabase) {
+    console.error("[ERROR] Supabase client not initialized in addWaitlist");
+    return;
+  }
+  console.log("[DEBUG] Saving user to Supabase waitlist:", user.email);
+  const { error } = await supabase.from("waitlists").insert(user);
+  if (error) {
+    console.error("[ERROR] Supabase: Failed to add to waitlist:", error.message, error.details);
+  } else {
+    console.log("[INFO] Successfully added user to Supabase waitlist.");
+  }
+}
+async function deleteWaitlist(id) {
+  if (!supabase) return;
+  const { error } = await supabase.from("waitlists").delete().eq("id", id);
+  if (error) console.error("Error deleting waitlist:", error);
+}
+async function readConfig() {
+  if (!supabase) return {};
+  try {
+    const { data, error } = await supabase.from("config").select("*").eq("id", 1).maybeSingle();
+    if (error) {
+      console.error("[ERROR] readConfig failed:", error.message, error.details || "");
+      return {};
+    }
+    return data || {};
+  } catch (err) {
+    console.error("[CRITICAL] readConfig unhandled error:", err.message || err);
+    return {};
+  }
+}
+async function writeConfig(cfg) {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase.from("config").select("id").eq("id", 1).maybeSingle();
+    let error;
+    if (data) {
+      ({ error } = await supabase.from("config").update(cfg).eq("id", 1));
+    } else {
+      ({ error } = await supabase.from("config").insert({ id: 1, ...cfg }));
+    }
+    if (error) {
+      console.error("[ERROR] writeConfig failed:", error.message, error.details || "");
+    }
+  } catch (err) {
+    console.error("[CRITICAL] writeConfig unhandled error:", err.message || err);
+  }
+}
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    database: supabase ? "connected" : "disconnected",
+    env: {
+      has_url: !!supabaseUrl,
+      has_key: !!supabaseKey,
+      admin_email: !!ADMIN_EMAIL,
+      admin_pass: !!ADMIN_PASSWORD
+    }
+  });
+});
+var ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "studyweb908@gmail.com").replace(/['"]/g, "").trim();
+var ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || "Peer_Rayan").replace(/['"]/g, "").trim();
+app.post("/api/admin/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "Email and password are required" });
+    }
+    const checkEmail = email.trim().toLowerCase();
+    const checkPassword = password.trim();
+    if (checkEmail === ADMIN_EMAIL.toLowerCase() && checkPassword === ADMIN_PASSWORD) {
+      return res.json({
+        success: true,
+        token: "studyweb_admin_session_token_129841029",
+        user: { email: ADMIN_EMAIL, role: "ADMIN" }
+      });
+    } else {
+      return res.status(401).json({ success: false, error: "Incorrect email or password" });
+    }
+  } catch (err) {
+    console.error("Unhandled error in /api/admin/login:", err);
+    return res.status(500).json({ success: false, error: "Internal server error." });
+  }
+});
+app.get("/api/admin/dashboard-metrics", async (req, res) => {
+  if (!supabase) {
+    console.error("[ERROR] Stats endpoint called but Supabase is not connected.");
+    return res.status(500).json({ error: "Database not connected. Check environment variables." });
+  }
+  let totalRegistrations = 0;
+  let totalWaitlists = 0;
+  let totalLoggedIn = 0;
+  try {
+    console.log("[DEBUG] Fetching waitlist count from Supabase...");
+    const { count: waitlistCount, error: waitlistError } = await supabase.from("waitlists").select("*", { count: "exact", head: true });
+    if (waitlistError) {
+      console.error("[ERROR] Stats: Failed to read waitlists count:", waitlistError.message);
+    } else {
+      totalWaitlists = waitlistCount || 0;
+    }
+    console.log("[DEBUG] Fetching user count from Supabase...");
+    const { count: userCount, error: regError } = await supabase.from("users").select("*", { count: "exact", head: true });
+    if (regError) {
+      console.warn("[WARN] Stats: users table error (falling back to waitlist count):", regError.message);
+      totalRegistrations = totalWaitlists;
+    } else {
+      totalRegistrations = userCount || 0;
+    }
+  } catch (err) {
+    console.error("[CRITICAL] Unhandled error in stats retrieval:", err.message || err);
+  }
+  res.json({ totalRegistrations, totalWaitlists, totalLoggedIn });
+});
+app.get("/api/admin/accounts", async (req, res) => {
+  if (!supabase) {
+    console.error("[ERROR] Users endpoint called but Supabase is not connected.");
+    return res.status(500).json({ error: "Database not connected. Check environment variables." });
+  }
+  try {
+    console.log("[DEBUG] Fetching all users from Supabase...");
+    const { data: userData, error: userError } = await supabase.from("users").select("id, email, name, created_at").order("created_at", { ascending: false });
+    if (userError) {
+      console.warn('[WARN] Failed to fetch from "users" table, falling back to "waitlists":', userError.message);
+      const { data: waitlistData, error: waitlistError } = await supabase.from("waitlists").select("id, email, first_name, last_name, created_at").order("created_at", { ascending: false });
+      if (waitlistError) {
+        return res.status(500).json({ error: waitlistError.message });
+      }
+      const mappedUsers = (waitlistData || []).map((w) => ({
+        id: w.id,
+        email: w.email,
+        name: `${w.first_name} ${w.last_name}`.trim(),
+        created_at: w.created_at
+      }));
+      return res.json({ users: mappedUsers });
+    }
+    console.log(`[INFO] Successfully fetched ${userData?.length || 0} users.`);
+    res.json({ users: userData || [] });
+  } catch (err) {
+    console.error("[CRITICAL] Unhandled error in users retrieval:", err);
+    res.status(500).json({ error: "Internal server error fetching users" });
+  }
+});
+app.post("/api/register", async (req, res) => {
+  if (!supabase) {
+    console.error("[ERROR] Register called but Supabase not connected.");
+    return res.status(500).json({ error: "Database not connected" });
+  }
+  const { email, password, name } = req.body;
+  console.log(`[DEBUG] Attempting to register user: ${email}`);
+  const { error } = await supabase.from("users").insert({ email, password, name });
+  if (error) {
+    console.error("[ERROR] Supabase register error:", error.message);
+    return res.status(500).json({ error: error.message });
+  }
+  console.log(`[INFO] User registered successfully: ${email}`);
+  const cfg = await readConfig();
+  if (cfg.accessToken) {
+    try {
+      console.log("Sending registration emails...");
+      const userSubject = "Welcome to StudyWeb Platform! \u{1F4DA}";
+      const encodedUserSubject = `=?utf-8?B?${Buffer.from(userSubject).toString("base64")}?=`;
+      const userBodyText = `Hi ${name || "there"},<br><br>
+Thank you for registering your account on the StudyWeb Platform!<br><br>
+You can now log in and begin using your personalized Socratic learning tools.<br><br>
+<b>From Confusion To Clarity.</b><br><br>
+\u2014 Team StudyWeb`;
+      const userStr = [
+        `To: ${email.trim()}`,
+        `Subject: ${encodedUserSubject}`,
+        "Content-Type: text/html; charset=utf-8",
+        "MIME-Version: 1.0",
+        "",
+        userBodyText
+      ].join("\r\n");
+      const userRaw = Buffer.from(userStr, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const userMailResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${cfg.accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ raw: userRaw })
+      });
+      if (userMailResponse.ok) {
+        const adminSubject = `New Registered User Joined StudyWeb: ${name || "User"} \u{1F464}`;
+        const encodedAdminSubject = `=?utf-8?B?${Buffer.from(adminSubject).toString("base64")}?=`;
+        const adminBodyText = `Hi Admin,<br><br>
+A new user has registered an account on the StudyWeb Platform!<br><br>
+<strong>Details:</strong><br>
+\u2022 Name: <strong>${name || "No Name"}</strong><br>
+\u2022 Email: <strong>${email}</strong><br>
+\u2022 Registered At: <strong>${(/* @__PURE__ */ new Date()).toISOString()}</strong><br><br>
+\u2014 StudyWeb System`;
+        const adminStr = [
+          `To: ${ADMIN_EMAIL.trim()}`,
+          `Subject: ${encodedAdminSubject}`,
+          "Content-Type: text/html; charset=utf-8",
+          "MIME-Version: 1.0",
+          "",
+          adminBodyText
+        ].join("\r\n");
+        const adminRaw = Buffer.from(adminStr, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${cfg.accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ raw: adminRaw })
+        });
+        console.log("[INFO] Registration emails sent successfully.");
+      } else {
+        const errText = await userMailResponse.text();
+        console.error("Failed to send user welcome email, skipping admin alert:", errText);
+      }
+    } catch (mailErr) {
+      console.error("[ERROR] Failed to send registration emails:", mailErr);
+    }
+  }
+  res.json({ success: true });
+});
+app.get("/api/admin/config", async (req, res) => {
+  const cfg = await readConfig();
+  res.json({
+    spreadsheetId: cfg.spreadsheetId || "",
+    googleEmail: cfg.googleEmail || "",
+    isConnected: !!cfg.accessToken
+  });
+});
+app.post("/api/admin/config", async (req, res) => {
+  const { spreadsheetId, accessToken, googleEmail } = req.body;
+  const cfg = await readConfig();
+  if (spreadsheetId !== void 0) cfg.spreadsheetId = spreadsheetId;
+  if (accessToken !== void 0) cfg.accessToken = accessToken;
+  if (googleEmail !== void 0) cfg.googleEmail = googleEmail;
+  await writeConfig(cfg);
+  res.json({ success: true, config: { spreadsheetId: cfg.spreadsheetId, googleEmail: cfg.googleEmail, isConnected: !!cfg.accessToken } });
+});
+app.post("/api/admin/create-sheet", async (req, res) => {
+  const { accessToken } = req.body;
+  if (!accessToken) {
+    return res.status(400).json({ error: "Missing access token" });
+  }
+  try {
+    const sheetResponse = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        properties: { title: "StudyWeb Waitlist Tracker" },
+        sheets: [{
+          properties: {
+            title: "Waitlist",
+            gridProperties: { rowCount: 1e3, columnCount: 7 }
+          }
+        }]
+      })
+    });
+    if (!sheetResponse.ok) {
+      const errText = await sheetResponse.text();
+      return res.status(sheetResponse.status).json({ error: "Failed to create sheet", details: errText });
+    }
+    const sheetData = await sheetResponse.json();
+    const spreadsheetId = sheetData.spreadsheetId;
+    const headerResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Waitlist!A1:G1?valueInputOption=RAW`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        values: [["First Name", "Last Name", "Email", "Grade/Class", "Country", "Notify Launch", "Timestamp"]]
+      })
+    });
+    if (!headerResponse.ok) {
+      console.error("Failed to add headers to Google sheet", await headerResponse.text());
+    }
+    const cfg = await readConfig();
+    cfg.spreadsheetId = spreadsheetId;
+    cfg.accessToken = accessToken;
+    delete cfg.formId;
+    await writeConfig(cfg);
+    res.json({ success: true, spreadsheetId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+async function syncToGoogleSheet() {
+  const cfg = await readConfig();
+  if (!cfg.spreadsheetId || !cfg.accessToken) {
+    return { success: false, error: "Google Sheet not connected." };
+  }
+  const { data: waitlists, error: readError } = await readWaitlists();
+  if (readError) {
+    return { success: false, error: readError };
+  }
+  try {
+    const range = "Waitlist!A2:G";
+    const values = waitlists.length > 0 ? waitlists.map((u) => [
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.grade,
+      u.country,
+      u.notify_launch ? "Yes" : "No",
+      u.created_at
+    ]) : [];
+    const clearResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:clear`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${cfg.accessToken}` }
+    });
+    if (!clearResponse.ok) {
+      const errText = await clearResponse.text();
+      if (clearResponse.status === 401 || errText.includes("authError") || errText.includes("UNAUTHENTICATED")) {
+        cfg.accessToken = null;
+        await writeConfig(cfg);
+        return { success: false, error: "Google account credentials have expired." };
+      }
+      return { success: false, error: "Failed to clear sheet: " + errText };
+    }
+    if (values.length > 0) {
+      const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${cfg.accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values })
+      });
+      if (!appendResponse.ok) {
+        const errText = await appendResponse.text();
+        if (appendResponse.status === 401 || errText.includes("authError") || errText.includes("UNAUTHENTICATED")) {
+          cfg.accessToken = null;
+          await writeConfig(cfg);
+          return { success: false, error: "Google account credentials have expired." };
+        }
+        return { success: false, error: errText };
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+app.get("/api/admin/waitlists", async (req, res) => {
+  const { data, error } = await readWaitlists();
+  if (error) {
+    return res.status(500).json({ waitlists: [], error });
+  }
+  res.json({ waitlists: data });
+});
+app.post("/api/admin/sync-sheet", async (req, res) => {
+  const result = await syncToGoogleSheet();
+  if (result.success) {
+    res.json({ success: true, message: "Synced successfully." });
+  } else {
+    res.status(result.error === "Google Sheet not connected." ? 400 : 500).json({ error: result.error });
+  }
+});
+app.delete("/api/admin/waitlists/:id", async (req, res) => {
+  const { id } = req.params;
+  await deleteWaitlist(id);
+  await syncToGoogleSheet();
+  res.json({ success: true, message: "Record deleted successfully" });
+});
+app.post("/api/waitlist", async (req, res) => {
+  try {
+    const { first_name, last_name, email, grade, country, notify_launch } = req.body;
+    if (!first_name || !last_name || !email || !grade || !country) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
+    if (supabase) {
+      const { data: existingUsers, error: checkError } = await supabase.from("waitlists").select("email").eq("email", email).limit(1);
+      if (checkError) {
+        console.error("[ERROR] Error checking existing email:", checkError.message);
+      } else if (existingUsers && existingUsers.length > 0) {
+        return res.status(400).json({ error: "email already exists" });
+      }
+    }
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+    const newUser = {
+      first_name,
+      last_name,
+      email,
+      grade,
+      country,
+      notify_launch: !!notify_launch,
+      created_at: timestamp
+    };
+    console.log("Attempting to save to Supabase:", newUser);
+    await addWaitlist(newUser);
+    console.log("Saved to Supabase successfully.");
+    const cfg = await readConfig();
+    console.log("Read configuration:", { hasAccessToken: !!cfg.accessToken });
+    let sheetSaved = false;
+    let emailSent = false;
+    let syncError = "";
+    if (cfg.accessToken) {
+      try {
+        console.log("Attempting to send welcome email...");
+        const subject = "Welcome to StudyWeb \u{1F680}";
+        const encodedSubject = `=?utf-8?B?${Buffer.from(subject).toString("base64")}?=`;
+        const bodyText = `Hi ${first_name},<br><br>
+Thank you for registering your account on the StudyWeb waitlist!<br><br>
+This email confirms your successful registration. As an early member, you have officially received <strong style="color: #4f46e5;">50% off</strong> your first pre-registration!<br><br>
+We'll notify you as soon as early access becomes available.<br><br>
+<b>From Confusion To Clarity.</b><br><br>
+\u2014 Team StudyWeb`;
+        const str = [
+          `To: ${email.trim()}`,
+          `Subject: ${encodedSubject}`,
+          "Content-Type: text/html; charset=utf-8",
+          "MIME-Version: 1.0",
+          "",
+          bodyText
+        ].join("\r\n");
+        const raw = Buffer.from(str, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        const mailResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${cfg.accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ raw })
+        });
+        if (mailResponse.ok) {
+          console.log("Welcome email sent successfully.");
+          emailSent = true;
+          console.log("Attempting to send admin waitlist alert...");
+          const adminSubject = `New Waitlist Signup: ${first_name} ${last_name} \u{1F389}`;
+          const encodedAdminSubject = `=?utf-8?B?${Buffer.from(adminSubject).toString("base64")}?=`;
+          const adminBodyText = `Hi Admin,<br><br>
+A new user has just joined the StudyWeb waitlist!<br><br>
+<strong>Details:</strong><br>
+\u2022 Name: <strong>${first_name} ${last_name}</strong><br>
+\u2022 Email: <strong>${email}</strong><br>
+\u2022 Class: <strong>${grade}</strong><br>
+\u2022 Country: <strong>${country}</strong><br>
+\u2022 Notify Launch: <strong>${notify_launch ? "Yes" : "No"}</strong><br>
+\u2022 Timestamp: <strong>${timestamp}</strong><br><br>
+Keep up the momentum!<br><br>
+\u2014 StudyWeb System`;
+          const adminStr = [
+            `To: ${ADMIN_EMAIL.trim()}`,
+            `Subject: ${encodedAdminSubject}`,
+            "Content-Type: text/html; charset=utf-8",
+            "MIME-Version: 1.0",
+            "",
+            adminBodyText
+          ].join("\r\n");
+          const adminRaw = Buffer.from(adminStr, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          const adminMailResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${cfg.accessToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ raw: adminRaw })
+          });
+          if (adminMailResponse.ok) {
+            console.log("Admin notification email sent successfully.");
+          } else {
+            const errText = await adminMailResponse.text();
+            console.error("Failed to send admin notification email:", errText);
+          }
+        } else {
+          const errText = await mailResponse.text();
+          console.error("Failed to send welcome email:", errText);
+        }
+      } catch (mailErr) {
+        console.error("Gmail API transmission error:", mailErr);
+      }
+    }
+    res.json({
+      success: true,
+      user: newUser,
+      sheetSaved,
+      emailSent,
+      syncError: syncError || void 0
+    });
+  } catch (err) {
+    console.error("Unhandled error in /api/waitlist:", err);
+    res.status(500).json({ error: "Internal server error: " + err.message });
+  }
+});
+async function startServer() {
+  if (process.env.NODE_ENV !== "production" && !isVercel) {
+    const { createServer: createViteServer } = await import("vite");
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa"
+    });
+    app.use(vite.middlewares);
+  } else if (!isVercel) {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+  if (!isVercel) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } else {
+    app.use((req, res) => {
+      res.status(404).json({ error: "Not Found", url: req.url });
+    });
+  }
+}
+var server_default = app;
+if (!isVercel) {
+  startServer();
+}
+export {
+  server_default as default
+};
+//# sourceMappingURL=server.js.map
