@@ -1,0 +1,104 @@
+# robots.txt for StudyWeb
+# Explicitly allowing all search engine crawlers and all LLM / AI agents
+
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# LLM Standard Documentation: https://llmstxt.org/
+# Canonical LLM context files
+# https://studyweb.com/llms.txt
+# https://studyweb.com/llms-full.txt
+
+# OpenAI LLM crawlers (ChatGPT, GPT-4, SearchGPT)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Google AI & Search crawlers (Gemini, Google-Extended, Vertex AI, Googlebot)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: GoogleOther-Image
+Allow: /
+
+User-agent: GoogleOther-Video
+Allow: /
+
+# Anthropic Claude crawlers
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+# Perplexity AI crawler
+User-agent: PerplexityBot
+Allow: /
+
+# Apple Intelligence & Search crawler
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Meta AI crawlers (Llama, Meta AI)
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+# Amazon AI & Alexa crawler
+User-agent: Amazonbot
+Allow: /
+
+# ByteDance AI crawler
+User-agent: Bytespider
+Allow: /
+
+# Common Crawl (dataset source for major open LLMs)
+User-agent: CCBot
+Allow: /
+
+# Cohere AI crawler
+User-agent: cohere-ai
+Allow: /
+
+# Mistral AI crawler
+User-agent: MistralAI
+Allow: /
+
+# Diffbot AI crawler
+User-agent: Diffbot
+Allow: /
+
+# DuckDuckGo AI crawler
+User-agent: DuckAssistBot
+Allow: /
+
+# You.com AI crawler
+User-agent: YouBot
+Allow: /
+
+# Sitemap
+Sitemap: https://studyweb.com/sitemap.xml

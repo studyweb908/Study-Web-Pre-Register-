@@ -22,20 +22,120 @@
     <link rel="icon" type="image/jpeg" href="/Favicon.jpg" />
     <link rel="apple-touch-icon" href="/Favicon.jpg" />
     <link rel="canonical" href="https://studyweb.com/" />
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM Context Documentation" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" title="Sitemap" />
     <title>StudyWeb | From Confusion To Clarity</title>
     
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data (Schema.org Graph for Google Rich Results & AI Search) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "StudyWeb",
-      "url": "https://studyweb.com/",
-      "description": "StudyWeb is your personalized Socratic learning tool. Transition from confusion to clarity with AI-powered study assistance.",
-      "publisher": {
-        "@type": "Organization",
-        "name": "StudyWeb"
-      }
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://studyweb.com/#website",
+          "url": "https://studyweb.com/",
+          "name": "StudyWeb",
+          "description": "StudyWeb is your personalized Socratic learning tool. Transition from confusion to clarity with AI-powered study assistance.",
+          "inLanguage": "en-US",
+          "publisher": {
+            "@id": "https://studyweb.com/#organization"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://studyweb.com/#organization",
+          "name": "StudyWeb",
+          "url": "https://studyweb.com/",
+          "logo": "https://studyweb.com/logo.png",
+          "image": "https://studyweb.com/Favicon.jpg",
+          "description": "Educational platform empowering students through active Socratic AI tutoring and conceptual mastery.",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "studyweb908@gmail.com",
+            "contactType": "customer support"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://studyweb.com/#application",
+          "name": "StudyWeb Socratic Learning Platform",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript. Compatible with all modern web browsers.",
+          "url": "https://studyweb.com/",
+          "description": "Personalized Socratic AI study tutor guiding students step-by-step to master STEM, humanities, and languages without giving away answers.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Pre-launch Waitlist registration with 50% discount on the first month of membership upon release."
+          },
+          "featureList": [
+            "Active Socratic Questioning Engine",
+            "Curriculum-Aligned STEM & Humanities Support",
+            "Safety-Filtered & Age-Appropriate AI Guardrails",
+            "Student Privacy Protection & Confidential Session Data",
+            "Parent & Teacher High-Level Progress Overview"
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://studyweb.com/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How does StudyWeb protect student privacy?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "We take privacy seriously. We only gather data explicitly required for personalized learning and performance tracking. We will never sell student data or use it for third-party advertising, ensuring a purely educational environment."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is the AI tutor safe and appropriate for all students?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Absolutely. Our AI models are rigorously safety-filtered, sandboxed securely, and fine-tuned specifically for academic subjects aged 12-18. The AI is proactively restricted from engaging in off-topic, harmful, or non-educational conversations."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Will StudyWeb just do my homework for me?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. StudyWeb is an educational tool built for conceptual mastery, not academic dishonesty. The AI is explicitly programmed to act as a supportive instructor—guiding students to answers via Socratic questioning rather than simply giving away the solutions."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Who can see my study data?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Study session data is strictly confidential. Parents and verified teachers can optionally be linked to accounts to view high-level progress reports (like time spent and mastery levels) but they cannot read granular chat logs—giving students a safe, judgment-free space to ask any question."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://studyweb.com/#breadcrumbs",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://studyweb.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Waitlist Pre-Registration",
+              "item": "https://studyweb.com/#waitlist"
+            }
+          ]
+        }
+      ]
     }
     </script>
   </head>

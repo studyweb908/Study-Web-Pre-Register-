@@ -117,8 +117,38 @@ async function writeConfig(cfg: any) {
 }
 
 // --------------------------------------------------------
-// API ENDPOINTS
+// API & STATIC SEO ENDPOINTS
 // --------------------------------------------------------
+
+// SEO: Robots.txt
+app.get('/robots.txt', (req, res) => {
+  const robotsPath = path.join(process.cwd(), 'public', 'robots.txt');
+  res.type('text/plain; charset=utf-8');
+  res.sendFile(robotsPath);
+});
+
+// SEO: Sitemap.xml
+app.get('/sitemap.xml', (req, res) => {
+  const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+  res.type('application/xml; charset=utf-8');
+  res.sendFile(sitemapPath);
+});
+
+// LLMs: llms.txt standard (https://llmstxt.org/)
+app.get('/llms.txt', (req, res) => {
+  const llmsPath = path.join(process.cwd(), 'public', 'llms.txt');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.type('text/plain; charset=utf-8');
+  res.sendFile(llmsPath);
+});
+
+// LLMs: llms-full.txt
+app.get('/llms-full.txt', (req, res) => {
+  const llmsFullPath = path.join(process.cwd(), 'public', 'llms-full.txt');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.type('text/plain; charset=utf-8');
+  res.sendFile(llmsFullPath);
+});
 
 // Public: Health Check
 app.get('/api/health', (req, res) => {

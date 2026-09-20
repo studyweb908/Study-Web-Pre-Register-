@@ -1,0 +1,89 @@
+# StudyWeb — Comprehensive Platform & Pedagogy Documentation
+
+> StudyWeb: From Confusion To Clarity.
+> An AI-powered Socratic learning and revision acceleration platform built specifically for students, parents, and educators.
+
+---
+
+## 1. Executive Summary
+
+StudyWeb is designed to bridge the cognitive gap between confusing classroom instruction and confident, autonomous problem-solving. While traditional AI tools frequently provide instant, passive answers that encourage superficial memorization or academic dishonesty, StudyWeb leverages a proprietary Socratic Pedagogy Engine.
+
+The platform interacts with students through dialogue, prompting them to articulate what they understand, identify logical fallacies in their reasoning, and arrive at the solution autonomously.
+
+---
+
+## 2. Core Philosophical Pillars
+
+### 2.1 From Confusion to Clarity
+Learning often stalls when a student encounters a roadblock in a textbook or problem set. StudyWeb acts as an always-available, patient tutor that breaks complex topics into intuitive mental models.
+
+### 2.2 Active Recall & Socratic Interrogation
+Rather than handing down answers, StudyWeb prompts students:
+- "What do you think is the first step when balancing this chemical equation?"
+- "Notice the sign in front of the parenthesis—how does that affect the terms inside?"
+This approach adheres to Bloom's Taxonomy, elevating learning from basic recall to analysis and synthesis.
+
+### 2.3 Safe, Sandboxed AI Architecture
+- Rigorously filtered to eliminate hallucination in standard curricula (grades 6–12+).
+- Strict content boundary enforcement preventing harmful, inappropriate, or non-educational topics.
+- Built-in guardrails against cheating: students cannot simply paste test questions and receive copy-paste solutions.
+
+### 2.4 Privacy & Data Dignity
+- Zero selling of student data.
+- Zero behavioral ad targeting.
+- Separation of concerns: Parents and teachers receive aggregate mastery analytics and time-on-task summaries without accessing private, judgment-free conversational logs.
+
+---
+
+## 3. Key Benefits by Stakeholder
+
+### For Students
+- **Learn Faster**: Grasp difficult STEM, humanities, and language concepts in minutes through intuitive analogies.
+- **Revise Smarter**: Spaced repetition and targeted quizzes focused specifically on individual weak points.
+- **Save Time**: Eliminate hours of frustration searching through disjointed video tutorials or forums.
+- **Improve Grades**: Build deep conceptual intuition that translates directly into exam performance.
+
+### For Parents
+- **Peace of Mind**: Safe, productive screen time replacing passive scrolling and gaming.
+- **Affordable Tutoring**: High-quality 24/7 academic support at a fraction of the cost of private human tutors.
+- **Transparent Progress**: Clear visibility into areas of improvement and study habits.
+
+### For Educators
+- **Complements Classroom Instruction**: Reinforces concepts taught during school hours without conflicting with curriculum pacing.
+- **Prevents Academic Dishonesty**: Promotes cognitive effort rather than AI plagiarism.
+
+---
+
+## 4. Current Pre-Launch & Waitlist Access
+
+StudyWeb is currently accepting pre-registrations for its initial rollout:
+- **Incentive**: Registered waitlist participants lock in a **50% discount** on their first month of membership.
+- **Registration Requirements**: First Name, Last Name, Email, Grade/Class level, and Country.
+- **Early Access Notification**: Automated email confirmations and launch access alerts delivered directly upon deployment.
+
+---
+
+## 5. Frequently Asked Questions (FAQ)
+
+### Q: How does StudyWeb protect student privacy?
+A: We take privacy seriously. We only gather data explicitly required for personalized learning and performance tracking. We will never sell student data or use it for third-party advertising, ensuring a purely educational environment.
+
+### Q: Is the AI tutor safe and appropriate for all students?
+A: Absolutely. Our AI models are rigorously safety-filtered, sandboxed securely, and fine-tuned specifically for academic subjects aged 12-18. The AI is proactively restricted from engaging in off-topic, harmful, or non-educational conversations.
+
+### Q: Will StudyWeb just do my homework for me?
+A: No. StudyWeb is an educational tool built for conceptual mastery, not academic dishonesty. The AI is explicitly programmed to act as a supportive instructor—guiding students to answers via Socratic questioning rather than simply giving away the solutions.
+
+### Q: Who can see my study data?
+A: Study session data is strictly confidential. Parents and verified teachers can optionally be linked to accounts to view high-level progress reports (like time spent and mastery levels) but they cannot read granular chat logs—giving students a safe, judgment-free space to ask any question.
+
+---
+
+## 6. Official Resources & Contact
+
+- **Website**: https://studyweb.com/
+- **Sitemap**: https://studyweb.com/sitemap.xml
+- **Robots Directives**: https://studyweb.com/robots.txt
+- **LLM Summary**: https://studyweb.com/llms.txt
+- **Admin Support Email**: studyweb908@gmail.com
