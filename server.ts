@@ -150,6 +150,14 @@ app.get('/llms-full.txt', (req, res) => {
   res.sendFile(llmsFullPath);
 });
 
+// Google Search Console Site Verification HTML
+app.get('/google:id.html', (req, res) => {
+  const filename = `google${req.params.id}.html`;
+  const filePath = path.join(process.cwd(), 'public', filename);
+  res.type('text/html');
+  res.sendFile(filePath);
+});
+
 // Public: Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
